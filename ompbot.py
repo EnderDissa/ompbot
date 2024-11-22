@@ -80,13 +80,18 @@ def check_excel(path):
                 if _ not in cyrillic_lower_letters: return "D" + col
             if not(row[4].isdigit()): return "E"+col
             phone=re.findall(r"(?:(?:8|\+7)[\- ]?)?(?:\(?\d{3}\)?[\- ]?)?[\d\- ]{7,10}",row[5])
-            #print(phone)
-            if not phone: return "F"+col
-            rows.append(row)
+            significant_digits = []
+            digits = re.findall(r"\d", phone[0])
+            significant_digits.extend(digits)
+            print(significant_digits)
+        if not phone: return "F"+col
+        rows.append(row)
     else:
         return "00", rows
 
     return "success", rows
+
+
 
 def create_excel(path, rows):
     data=openpyxl.Workbook()

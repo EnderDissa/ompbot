@@ -17,40 +17,54 @@ from datetime import datetime as date
 import openpyxl
 import re
 
+
 def lsend(id, text):
-    print("sended to "+str(id))
+    print("sended to " + str(id))
     vk_session.method('messages.send', {'user_id': id, 'message': text, 'random_id': 0})
+
+
 def lsend_withA(id, text, attachment):
     print("sended to " + str(id))
-    vk_session.method('messages.send', {'user_id': id, 'message': text, 'attachment':attachment, 'random_id': 0})
+    vk_session.method('messages.send', {'user_id': id, 'message': text, 'attachment': attachment, 'random_id': 0})
 
-def send(id,text):
+
+def send(id, text):
     print("sended to " + str(id))
-    vk_session.method('messages.send',{'chat_id':id,'message':text,'random_id':0})
+    vk_session.method('messages.send', {'chat_id': id, 'message': text, 'random_id': 0})
+
 
 def send_withA(id, text, attachment):
     print("sended to " + str(id))
-    vk_session.method('messages.send', {'chat_id': id, 'message': text, 'attachment':attachment, 'random_id': 0})
+    vk_session.method('messages.send', {'chat_id': id, 'message': text, 'attachment': attachment, 'random_id': 0})
+
+
 def sender(sender_type):
-   pass
+    pass
+
+
 def attachment_extract(url, name):
     response = requests.get(url)
-    if not os.path.exists('xlsx/'+name[:-5]):
-        dir='xlsx/'+name[:-5]
+    if not os.path.exists('xlsx/' + name[:-5]):
+        dir = 'xlsx/' + name[:-5]
         os.mkdir(dir)
-        print("новый клуб: "+name[:-5])
-    path="xlsx/"+name[:-5]+"/"+("_".join(str(date.now())[:-7].replace(":","-").split()))+".xlsx"
+        print("новый клуб: " + name[:-5])
+    path = "xlsx/" + name[:-5] + "/" + ("_".join(str(date.now())[:-7].replace(":", "-").split())) + ".xlsx"
     with open(path, "wb") as f:
         f.write(response.content)
         return path
+
 
 def check_excel(path):
     row = []
     rows = []
     data = openpyxl.load_workbook(path)
     sheet = data.active
-    correct_meta=['Корпус:', '№', 'Фамилия', 'Дата, время:', 'Имя', 'Отчество', 'Название мероприятия:', 'Серия и номер паспорта', 'Номер телефона', 'Ответственный от подразделения:', 'Ежков Павел Игроевич, заместитель директора ОМП', 89213422059, 'Контактное лицо:']
-    meta = [sheet['A1'].value, sheet['A2'].value, sheet['B2'].value,sheet['C1'].value, sheet['C2'].value, sheet['D2'].value, sheet['E1'].value, sheet['E2'].value, sheet['F2'].value, sheet['G1'].value,sheet['G2'].value,sheet['G3'].value,sheet['H1'].value]
+    correct_meta = ['Корпус:', '№', 'Фамилия', 'Дата, время:', 'Имя', 'Отчество', 'Название мероприятия:',
+                    'Серия и номер паспорта', 'Номер телефона', 'Ответственный от подразделения:',
+                    'Ежков Павел Игроевич, заместитель директора ОМП', 89213422059, 'Контактное лицо:']
+    meta = [sheet['A1'].value, sheet['A2'].value, sheet['B2'].value, sheet['C1'].value, sheet['C2'].value,
+            sheet['D2'].value, sheet['E1'].value, sheet['E2'].value, sheet['F2'].value, sheet['G1'].value,
+            sheet['G2'].value, sheet['G3'].value, sheet['H1'].value]
     korpus = sheet['B1'].value
     date_time = str(sheet['D1'].value)
     name = sheet['F1'].value
@@ -58,47 +72,47 @@ def check_excel(path):
     rukovod_phone = sheet['H3'].value
 
     date = date_time.split()[0]
-    #print(meta)
-    #print(korpus, date_time, date, name, rukovod, rukovod_phone)
-    if correct_meta==meta:
-        i=0;cyrillic_lower_letters = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'
+    # print(meta)
+    # print(korpus, date_time, date, name, rukovod, rukovod_phone)
+    if correct_meta == meta:
+        i = 0;
+        cyrillic_lower_letters = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'
         while True:
-            i+=1
-            col=str(i)
+            i += 1
+            col = str(i)
             if sheet['A' + col].value is None: break
-            row=[sheet['A'+col].value,sheet['B'+col].value.strip(),sheet['C'+col].value.strip(),str(sheet['D'+col].value).strip(),str(sheet['E'+col].value).strip().zfill(10),str(sheet['F'+col].value).strip(),sheet['G'+col].value,sheet['H'+col].value]
+            row = [sheet['A' + col].value, sheet['B' + col].value.strip(), sheet['C' + col].value.strip(),
+                   str(sheet['D' + col].value).strip(), str(sheet['E' + col].value).strip().zfill(10),
+                   str(sheet['F' + col].value).strip(), sheet['G' + col].value, sheet['H' + col].value]
 
-            if i<3:
+            if i < 3:
                 rows.append(row)
                 continue
-            if row[0]!=i-2: return "A"+col
+            if row[0] != i - 2: return "A" + col
             for _ in row[1].lower():
-                if _ not in cyrillic_lower_letters: return "B"+col
+                if _ not in cyrillic_lower_letters: return "B" + col
             for _ in row[2].lower():
-                if _ not in cyrillic_lower_letters: return "C" + col+_
+                if _ not in cyrillic_lower_letters: return "C" + col + _
             for _ in str(row[3]).lower():
                 if _ not in cyrillic_lower_letters: return "D" + col
-            if not(row[4].isdigit()): return "E"+col
-            phone=re.findall(r"(?:(?:8|\+7)[\- ]?)?(?:\(?\d{3}\)?[\- ]?)?[\d\- ]{7,10}",row[5])
+            if not (row[4].isdigit()): return "E" + col
+            phone = re.findall(r"(?:(?:8|\+7)[\- ]?)?(?:\(?\d{3}\)?[\- ]?)?[\d\- ]{7,10}", row[5])
             significant_digits = []
             digits = re.findall(r"\d", phone[0])
             significant_digits.extend(digits)
-            print(significant_digits)
-        if not phone: return "F"+col
-        rows.append(row)
+            # print(significant_digits)
+            if not phone: return "F" + col
+            rows.append(row)
     else:
         return "00", rows
-
     return "success", rows
 
-
-
 def create_excel(path, rows):
-    data=openpyxl.Workbook()
+    data = openpyxl.Workbook()
     sheet = data.active
 
-    sheet.title="Согласование СЗ"
-    fill =  PatternFill(start_color="E7E6E6", end_color="E7E6E6", fill_type="solid")
+    sheet.title = "Согласование СЗ"
+    fill = PatternFill(start_color="E7E6E6", end_color="E7E6E6", fill_type="solid")
     border = Border(
         left=Side(border_style="medium", color='FF000000'),
         right=Side(border_style="medium", color='FF000000'),
@@ -113,8 +127,8 @@ def create_excel(path, rows):
 
     for i in range(len(rows)):
         for j in range(len(rows[i])):
-            cell=sheet.cell(row=i+1,column=j+1)
-            cell.value=rows[i][j]
+            cell = sheet.cell(row=i + 1, column=j + 1)
+            cell.value = rows[i][j]
             if cell.value:
                 cell.border = border
 
@@ -151,7 +165,6 @@ def create_excel(path, rows):
         return False
 
 
-
 with open("token.txt", 'r') as f:
     token = f.readline()
 
@@ -159,14 +172,11 @@ vk_session = vk_api.VkApi(token=token)
 vk = vk_session.get_api()
 
 groupid = 228288169
-admin = [297002785]; ignore = []
+admin = [297002785];
+ignore = []
 longpoll = VkBotLongPoll(vk_session, groupid)
 
-
 print("работай")
-
-
-
 
 while True:
     try:
@@ -199,52 +209,56 @@ while True:
                         if uid in ignore:
                             ignore.remove(uid)
                             tts = "Надеюсь, вопрос снят!"
-                            send(1, "vk.com/gim"+str(groupid)+"?sel=" + str(uid) + " не вызывает")
+                            send(1, "vk.com/gim" + str(groupid) + "?sel=" + str(uid) + " не вызывает")
                         else:
                             ignore.append(uid)
                             tts = "Принято, сейчас позову! Напиши свою проблему следующим сообщением"
-                            send(1, "vk.com/gim"+str(groupid)+"?sel=" + str(uid) + " вызывает")
+                            send(1, "vk.com/gim" + str(groupid) + "?sel=" + str(uid) + " вызывает")
                         lsend(uid, tts)
-
 
                     if uid in ignore:
                         continue
                     else:
-                        attachment=event.object.message['attachments']
+                        attachment = event.object.message['attachments']
 
                         if attachment:
-                            attachment=attachment[0]
+                            attachment = attachment[0]
                             attachment = attachment['doc'] if attachment['type'] == 'doc' else None
-                        else: None
+                        else:
+                            None
 
                         if attachment:
-                            attachment_title=attachment['title']
-                            attachment_ext=attachment['ext']
-                            attachment_url=attachment['url']
-                            path=attachment_extract(attachment_url, attachment_title[3:])
+                            attachment_title = attachment['title']
+                            attachment_ext = attachment['ext']
+                            attachment_url = attachment['url']
+                            path = attachment_extract(attachment_url, attachment_title[3:])
 
-
-                            check=check_excel(path)
-                            if check[0]=="success":
-                                rows=check[1]
-                                tts="принято:"
-                                newname=attachment_title[:-5]+"_"+"_".join(rows[0][3].replace(":","-").split())
-                                newpath = newname+".xlsx"
+                            check = check_excel(path)
+                            if check[0] == "success":
+                                rows = check[1]
+                                tts = "принято:"
+                                newname = attachment_title[:-5] + "_" + "_".join(
+                                    rows[0][3].replace(":", "-").replace(".", "-").split())
+                                newpath = newname + ".xlsx"
+                                print(rows)
                                 create_excel(newpath, rows)
 
                                 result = json.loads(requests.post(
-                                    vk.docs.getMessagesUploadServer(type='doc', peer_id=event.object.message['peer_id'])['upload_url'],
+                                    vk.docs.getMessagesUploadServer(type='doc',
+                                                                    peer_id=event.object.message['peer_id'])[
+                                        'upload_url'],
                                     files={'file': open(newpath, 'rb')}).text)
                                 jsonAnswer = vk.docs.save(file=result['file'], title=newname, tags=[])
                                 attachment = f"doc{jsonAnswer['doc']['owner_id']}_{jsonAnswer['doc']['id']}"
 
-                                lsend_withA(uid,tts,attachment)
-                                send_withA(1,"новая проходка от vk.com/gim"+str(groupid)+"?sel=" + str(uid), attachment)
+                                lsend_withA(uid, tts, attachment)
+                                send_withA(1, "новая проходка от vk.com/gim" + str(groupid) + "?sel=" + str(uid),
+                                           attachment)
                                 continue
-                            elif check[0]=="00":
-                                tts="ошибка в одной из ячеек, которые нельзя менять. перепроверьте A1, A2, B2, C1, C2, D2, E1, E2, F2, G1, G2, G3, H1 по шаблону"
-                            else: tts="ошибка в ячейке "+check
-
+                            elif check[0] == "00":
+                                tts = "ошибка в одной из ячеек, которые нельзя менять. перепроверьте A1, A2, B2, C1, C2, D2, E1, E2, F2, G1, G2, G3, H1 по шаблону"
+                            else:
+                                tts = "ошибка в ячейке " + check
 
                     lsend(uid, tts)
     except Exception:

@@ -33,11 +33,33 @@ def send(id, text):
     vk_session.method('messages.send', {'chat_id': id, 'message': text, 'random_id': 0})
 
 
-def send_withA(id, text, attachment):
+def send_withA(id, text, attachment, title, sender):
     print("sended to " + str(id))
-    vk_session.method('messages.send', {'chat_id': id, 'message': text, 'attachment': attachment, 'random_id': 0})
+    keyboard = vk_api.keyboard.VkKeyboard(inline=True)
+    keyboard.add_callback_button(label="ОТПРАВИТЬ", payload={"type": "send", 'sender': sender, 'title': title},
+                                 color=VkKeyboardColor.SECONDARY)
+    keyboard.add_callback_button(label="СОГЛАСОВАТЬ", payload={"type": "approve", 'sender': sender, 'title': title},
+                                 color=VkKeyboardColor.POSITIVE)
+    keyboard=keyboard.get_keyboard()
+    print(attachment)
+    vk_session.method('messages.send', {'chat_id': id, 'message': text, 'attachment': attachment, 'keyboard':keyboard, 'random_id': 0 })
+def editkb(peer_id,cmid, type):
+    keyboard = vk_api.keyboard.VkKeyboard(inline=True)
+    keyboard.add_callback_button(label="ОТПРАВЛЕНО", payload={"type": "send", 'sender': sender, 'title': title},
+                                 color=VkKeyboardColor.NEGATIVE)
+    keyboard.add_callback_button(label=("СОГЛАСОВАНО" if type=="approve" else "СОГЛАСОВАТЬ"), payload={"type": "approve", 'sender': sender, 'title': title},
+                                 color=(VkKeyboardColor.NEGATIVE if type =="approve" else VkKeyboardColor.POSITIVE))
+    keyboard = keyboard.get_keyboard()
+
+    original_message = vk.messages.getById(
+        peer_id=peer_id,
+        cmids=cmid)
+    original_text = original_message['items'][0]['text']
+    original_attachment = original_message['items'][0]['attachments'][0]['doc']
+    original_attachment="doc"+str(original_attachment['owner_id'])+'_'+str(original_attachment['id'])
 
 
+    vk.messages.edit(peer_id=peer_id, conversation_message_id=cmid, keyboard=keyboard,message=original_text, attachment=original_attachment)
 def sender(sender_type):
     pass
 
@@ -171,6 +193,7 @@ with open("token.txt", 'r') as f:
 vk_session = vk_api.VkApi(token=token)
 vk = vk_session.get_api()
 
+enote='https://ursi.yonote.ru/share/clubs/doc/sluzhebnye-zapiski-i-prohod-gostej-xgDHEDUghu'
 groupid = 228288169
 admin = [297002785];
 ignore = []
@@ -181,21 +204,66 @@ print("работай")
 while True:
     try:
         for event in longpoll.listen():
+            if event.type == VkBotEventType.MESSAGE_EVENT:
+                pl = event.object.get('payload')
+                if pl:
+                    conversation_message_id = event.object['conversation_message_id']
+                    peer_id = event.object['peer_id']
+
+                    type=pl['type']
+                    sender=int(pl['sender'])
+                    title=pl['title']
+                    tts="Ваша служебная записка "+title
+
+                    if type=="send":
+                        tts+="\n принята и отправлена на согласование!"
+                        editkb(peer_id=peer_id,cmid=conversation_message_id,type="send")
+                    elif type=="approve":
+                        tts+="\n согласована и внесена в систему для отображения на мониторе охраны!"
+                        editkb(peer_id=peer_id, cmid=conversation_message_id, type="approve")
+                    else:
+                        continue
+
+                    lsend(sender, tts)
             if event.type == VkBotEventType.MESSAGE_NEW:
+                tts=''
+
+                time=int(str(date.now().time())[:2])
+                weekday=date.today().weekday()
+                if weekday>4:
+                    tts+="Внимание! Служебные записки не согласуются по выходным. Вы можете отправить документ, " \
+                         "бот его обработает, но согласование получите только в понедельник. Если " \
+                         "ситуация срочная, пишите \"МЕНЕДЖЕР\"\n\n"
+                elif weekday==4 and time>16:
+                    tts+="Внимание! По пятницам служебные записки не согласуются после 16:00. Вы можете отправить " \
+                         "документ, бот его обработает, но согласование получите только в понедельник. Если " \
+                         "ситуация срочная, пишите \"МЕНЕДЖЕР\"\n\n"
+                elif time>17:
+                    tts+="Внимание! Служебные записки не согласуются после 17:00. Вы можете отправить документ, " \
+                         "бот его обработает, но согласование получите только завтра. Если " \
+                         "ситуация срочная, пишите \"МЕНЕДЖЕР\"\n\n"
+                elif time<10:
+                    tts+="Внимание! Служебные записки не обрабатываются до 10:00. Вы можете отправить документ, " \
+                         "бот его обработает, но согласование получите только в рабочее время. Если " \
+                         "ситуация срочная, пишите \"МЕНЕДЖЕР\"\n\n"
+
                 if event.from_chat:
                     id = event.chat_id
                     uid = event.obj['message']['from_id']
                     peer_id = 2000000000 + uid
+
 
                 else:
                     uid = event.message.from_id
                     peer_id = 2000000000 + uid
                     msg = event.object.message['text'].lower()
                     msgs = msg.split()
-                    if vk_session.method('groups.isMember', {'group_id': groupid, 'user_id': uid}) == 0:
-                        tts = "Привет! Бот создан для предобработки служебных записок в университете ИТМО и доступен только клубам. Поэтому чтобы иметь доступ к обработке служебок необходимо подписаться на это сообщество, ссылку ты можешь найти в еноте или спросить в группе тг!\n\nПосле подписки отправь ещё одно сообщение. Только в случае возникновения проблем пиши \"АДМИН\""
-                    else:
-                        tts = "Здравствуй! Отправь мне служебку, я её предпроверю. Если всё хорошо, я отправлю её на обработку, после чего жди сообщения от менеджера.\nP.S. обязательно отправляй служебки в формате, указанном в еноте! (теперь эксель)"
+                    attachment = event.object.message['attachments']
+                    if not attachment:
+                        if vk_session.method('groups.isMember', {'group_id': groupid, 'user_id': uid}) == 0:
+                            tts += "Бот создан для предобработки служебных записок в университете ИТМО и доступен только клубам. Поэтому чтобы иметь доступ к обработке служебных записок необходимо подписаться на это сообщество, ссылку ты можешь найти в еноте или спросить в группе тг!\n\nПосле подписки отправь ещё одно сообщение. Только в случае возникновения проблем пиши \"МЕНЕДЖЕР\""
+                        else:
+                            tts += "Отправь мне служебную записку, я проведу предпроверку. Если всё хорошо, я отправлю её на обработку, после чего жди сообщения от менеджера. Если возникла проблема, пиши \"МЕНЕДЖЕР\"\nP.S. обязательно отправляй служебные записки в формате, указанном в yonote: "+enote
 
                     if msgs:
                         if uid in admin:
@@ -205,7 +273,7 @@ while True:
                                 sender(msgs[1])
                                 tts = "готово"
 
-                    if "админ" in msg:
+                    if "менеджер" in msg or "админ" in msg:
                         if uid in ignore:
                             ignore.remove(uid)
                             tts = "Надеюсь, вопрос снят!"
@@ -236,11 +304,10 @@ while True:
                             check = check_excel(path)
                             if check[0] == "success":
                                 rows = check[1]
-                                tts = "принято:"
-                                newname = attachment_title[:-5] + "_" + "_".join(
+                                tts += "Принято! Отправил на проверку, ожидайте ответа."
+                                newname = attachment_title[:attachment_title.find(".")] + "_" + "_".join(
                                     rows[0][3].replace(":", "-").replace(".", "-").split())
                                 newpath = newname + ".xlsx"
-                                print(rows)
                                 create_excel(newpath, rows)
 
                                 result = json.loads(requests.post(
@@ -253,12 +320,14 @@ while True:
 
                                 lsend_withA(uid, tts, attachment)
                                 send_withA(1, "новая проходка от vk.com/gim" + str(groupid) + "?sel=" + str(uid),
-                                           attachment)
+                                           attachment, newpath, uid)
+
+
                                 continue
                             elif check[0] == "00":
-                                tts = "ошибка в одной из ячеек, которые нельзя менять. перепроверьте A1, A2, B2, C1, C2, D2, E1, E2, F2, G1, G2, G3, H1 по шаблону"
+                                tts += "ошибка в одной из ячеек, которые нельзя менять. перепроверьте A1, A2, B2, C1, C2, D2, E1, E2, F2, G1, G2, G3, H1 по шаблону"
                             else:
-                                tts = "ошибка в ячейке " + check
+                                tts += "ошибка в ячейке " + check
 
                     lsend(uid, tts)
     except Exception:

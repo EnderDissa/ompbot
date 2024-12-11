@@ -89,7 +89,7 @@ def check_excel(path):
     sheet = data.active
     correct_meta = ['Корпус:', '№', 'Фамилия', 'Дата, время:', 'Имя', 'Отчество', 'Название мероприятия:',
                     'Серия и номер паспорта', 'Номер телефона', 'Ответственный от подразделения:',
-                    'Ежков Павел Игроевич, заместитель директора ОМП', 89213422059, 'Контактное лицо:']
+                    'Ежков Павел Игроевич, заместитель директора ОМП', 79213422059, 'Контактное лицо:']
     meta = [sheet['A1'].value, sheet['A2'].value, sheet['B2'].value, sheet['C1'].value, sheet['C2'].value,
             sheet['D2'].value, sheet['E1'].value, sheet['E2'].value, sheet['F2'].value, sheet['G1'].value,
             sheet['G2'].value, sheet['G3'].value, sheet['H1'].value]
@@ -102,7 +102,7 @@ def check_excel(path):
     date = date_time.split()[0]
 
     if correct_meta == meta:
-        if date_time=="01.01.2025  09:00-23:00" or "Шаблон" in name or "Шаблон" in rukovod or rukovod_phone==89633336075 or rukovod_phone=="89633336075":
+        if date_time=="01.01.2025  09:00-23:00" or "Шаблон" in name or "Шаблон" in rukovod or rukovod_phone==79633336075 or rukovod_phone=="79633336075":
             return "01", rows
         i = 0;
         cyrillic_lower_letters = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'
@@ -120,10 +120,13 @@ def check_excel(path):
             if row[0] != i - 2: return "A" + col
             for _ in row[1].lower():
                 if _ not in cyrillic_lower_letters: return "B" + col
+            row[1]=row[1][0].upper()+row[1][1:].lower()
             for _ in row[2].lower():
                 if _ not in cyrillic_lower_letters: return "C" + col + _
+            row[2] = row[2][0].upper() + row[2][1:].lower()
             for _ in str(row[3]).lower():
                 if _ not in cyrillic_lower_letters: return "D" + col
+            row[3] = row[3][0].upper() + row[3][1:].lower()
             if not (row[4].isdigit() or not(re.findall(r"\d{10}",row[4]))) or row[4][:2]=='00': return "E" + col
             if not (row[5].isdigit()): return "F" + col
             digits = re.findall(r"7\d{10}", row[5])[0]

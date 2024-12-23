@@ -38,21 +38,21 @@ def send_withA(id, text, attachment, title, sender, kolgost=0):
     keyboard = vk_api.keyboard.VkKeyboard(inline=True)
     keyboard.add_callback_button(label="ОТПРАВИТЬ", payload={"type": "send", 'sender': sender, 'title': title},
                                  color=VkKeyboardColor.SECONDARY)
-    keyboard.add_callback_button(label="СОГЛАСОВАТЬ", payload={"type": "approve", 'sender': sender, 'title': title, 'kolgost': kolgost},
+    keyboard.add_callback_button(label="СОГЛАСОВАТЬ", payload={"type": "approve", 'sender': sender, 'title': title, 'isSended': False},
                                  color=VkKeyboardColor.POSITIVE)
     keyboard = keyboard.get_keyboard()
     vk_session.method('messages.send',
                       {'chat_id': id, 'message': text, 'attachment': attachment, 'keyboard': keyboard, 'random_id': 0})
 
 
-def editkb(peer_id, cmid, type, kolgost=0):
+def editkb(peer_id, cmid, type):
     keyboard = vk_api.keyboard.VkKeyboard(inline=True)
     keyboard.add_callback_button(label="ОТПРАВЛЕНО", payload={"type": "sended", 'sender': sender, 'title': title},
                                  color=VkKeyboardColor.NEGATIVE)
     keyboard.add_callback_button(label=("СОГЛАСОВАНО" if type == "approve" else "СОГЛАСОВАТЬ"),
                                  payload={"type": ("approved" if type == "approve" else "approve"), 'sender': sender,
-                                          'title': title, 'kolgost':kolgost},
-                                 color=(VkKeyboardColor.NEGATIVE if type == "approve" else VkKeyboardColor.POSITIVE))
+                                          'title': title, 'isSended':(False if type=="send" else True)},
+                                 color=(VkKeyboardColor.NEGATIVE if type == "approved" else VkKeyboardColor.POSITIVE))
     keyboard = keyboard.get_keyboard()
 
     original_message = vk.messages.getById(
@@ -104,8 +104,13 @@ def check_excel(path):
     if correct_meta == meta:
         if date_time=="01.01.2025  09:00-23:00" or "Шаблон" in name or "Шаблон" in rukovod or rukovod_phone==79633336075 or rukovod_phone=="79633336075":
             return "01", rows
-        i = 0;
+        i = 0;j=0
         cyrillic_lower_letters = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'
+        while True:
+            j += 1
+            col = str(j)
+            if sheet['A' + col].value is None: break
+        lenrow=j-3
         while True:
             i += 1
             col = str(i)
@@ -131,8 +136,8 @@ def check_excel(path):
             if not (row[5].isdigit()): return "F" + col
             digits = re.findall(r"7\d{10}", row[5])[0]
             if not digits: return "F" + col
-            nomer="8-"+digits[1:4]+"-"+digits[4:7]+"-"+digits[7:9]+"-"+digits[9:] #8-xxx-xxx-xx-xx
-
+            if lenrow>2: nomer="8-"+digits[1:4]+"-"+digits[4:7]+"-"+digits[7:9]+"-"+digits[9:] #8-xxx-xxx-xx-xx
+            else: nomer=digits
             row[5]=nomer
             rows.append(row)
     else:
@@ -229,14 +234,14 @@ while True:
 
                     if type == "send":
                         tts += "\n принята и отправлена на согласование!"
-                        editkb(peer_id=peer_id, cmid=conversation_message_id, type="send")
+                        editkb(peer_id=peer_id, cmid=conversation_message_id, type="sended")
                     elif type == "approve":
-                        kolgost = pl['kolgost']
-                        if kolgost>2:
+                        is_sended = pl['isSended']
+                        if is_sended:
                             tts += "\nсогласована и внесена в систему для отображения на мониторе охраны!"
                         else:
-                            tts+="\nсогласована и внесена в систему для получения QR на терминале!"
-                        editkb(peer_id=peer_id, cmid=conversation_message_id, type="approve")
+                            tts += "\nсогласована и внесена в систему для получения QR на терминале!"
+                        editkb(peer_id=peer_id, cmid=conversation_message_id, type="approved")
                     else:
                         continue
 
@@ -246,7 +251,13 @@ while True:
 
                 time = int(str(date.now().time())[:2])
                 weekday = date.today().weekday()
-                if weekday > 4:
+                month = int(str(date.now().date())[-5:-3])
+                day = int(str(date.now().date())[-2:])
+                if (month==12 and day>=28) or (month==1 and day<=8):
+                    tts += "С новым годом! Служебные записки не согласуются на каникулах. Вы можете отправить документ, " \
+                           "бот его обработает, но согласование получите только после 9 января. Если " \
+                           "ситуация срочная, пишите \"МЕНЕДЖЕР\"\n\n"
+                elif weekday > 4:
                     tts += "Внимание! Служебные записки не согласуются по выходным. Вы можете отправить документ, " \
                            "бот его обработает, но согласование получите только в понедельник. Если " \
                            "ситуация срочная, пишите \"МЕНЕДЖЕР\"\n\n"

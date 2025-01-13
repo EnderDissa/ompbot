@@ -17,6 +17,8 @@ from datetime import datetime as date
 import openpyxl
 import re
 
+from utils import IgnoredList
+
 
 def lsend(id, text):
     print("sended to " + str(id))
@@ -212,10 +214,11 @@ vk = vk_session.get_api()
 enote = 'https://ursi.yonote.ru/share/clubs/doc/sluzhebnye-zapiski-i-prohod-gostej-bihQHvmk8w'
 groupid = 228288169
 admin = [297002785]
-ignore = []
+ignored = IgnoredList().load_from_file()
 longpoll = VkBotLongPoll(vk_session, groupid)
 
 print("работай")
+
 
 while True:
     try:
@@ -307,20 +310,20 @@ while True:
                                 tts = "готово"
 
                     if "менеджер" in msg or "админ" in msg:
-                        if uid in ignore:
-                            ignore.remove(uid)
+                        if ignored.is_ignored(uid):
+                            ignored.remove(uid)
                             tts = "Надеюсь, вопрос снят!"
                             send(1, uname + " " + usurname + " больше не вызывает. прямая ссылка:\nvk.com/gim" + str(
                                 groupid) + "?sel=" + str(uid))
                             continue
                         else:
-                            ignore.append(uid)
+                            ignored.add(uid)
                             tts = "Принято, сейчас позову! Напиши свою проблему следующим сообщением. Когда вопрос будет решён, напиши команду ещё раз."
                             send(1, uname + " " + usurname + " вызывает! прямая ссылка:\nvk.com/gim" + str(
                                 groupid) + "?sel=" + str(uid))
                         lsend(uid, tts)
 
-                    if uid in ignore:
+                    if ignored.is_ignored(uid):
                         continue
                     else:
                         attachment = event.object.message['attachments']

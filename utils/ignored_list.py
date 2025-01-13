@@ -10,7 +10,7 @@ class IgnoredList:
             print(f"Пользователь {uid} уже в игноре.")
 
     def remove(self, uid):
-        if uid not in self.ignored:
+        if uid in self.ignored:
             self.ignored.remove(uid)
             print(f"Пользователь {uid} удалён из игнора.")
         else:
@@ -25,7 +25,7 @@ class IgnoredList:
 
     def save_to_file(self):
         try:
-            with open("../ignored.txt", 'w+') as file:
+            with open("ignored.txt", 'w+') as file:
                 file.write('\n'.join(map(str, self.ignored)))
             print(f"Список игнорируемых сохранён.")
         except Exception as e:

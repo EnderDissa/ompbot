@@ -143,6 +143,9 @@ while True:
                                 sender(msgs[1])
                                 tts = "готово"
 
+                    if ignored.is_ignored(uid):
+                        if not ("менеджер" in msg or "админ" in msg):
+                            continue
                     if "менеджер" in msg or "админ" in msg:
                         if ignored.is_ignored(uid):
                             ignored.remove(uid)
@@ -150,17 +153,13 @@ while True:
                             tts = "Надеюсь, вопрос снят!"
                             VK.send(1, uname + " " + usurname + " больше не вызывает. прямая ссылка:\nvk.com/gim" + str(
                                 groupid) + "?sel=" + str(uid))
-                            continue
                         else:
                             ignored.add(uid)
                             ignored.save_to_file()
                             tts = "Принято, сейчас позову! Напиши свою проблему следующим сообщением. Когда вопрос будет решён, напиши команду ещё раз."
                             VK.send(1, uname + " " + usurname + " вызывает! прямая ссылка:\nvk.com/gim" + str(
                                 groupid) + "?sel=" + str(uid))
-                        VK.lsend(uid, tts)
 
-                    if ignored.is_ignored(uid):
-                        continue
                     else:
                         attachment = event.object.message['attachments']
 
@@ -188,7 +187,7 @@ while True:
                                 tts += "Принято! Отправил на проверку, ожидайте ответа."
                                 newname = "СЗ_"+attachment_title[:attachment_title.find(".")] + "_" + "_".join(
                                     rows[0][3].replace(":", "-").replace(".", "-").split())
-                                newpath = newname + ".xlsx"
+                                newpath = "xlsx"+newname + ".xlsx"
                                 create_excel(newpath, rows)
 
                                 result = json.loads(requests.post(

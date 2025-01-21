@@ -28,6 +28,7 @@ class VK:
         keyboard.add_callback_button(label="СОГЛАСОВАТЬ",
                                      payload={"type": "approve", 'sender': sender, 'title': title, 'isSended': False},
                                      color=VkKeyboardColor.POSITIVE)
+
         keyboard = keyboard.get_keyboard()
         self.vk_session.method('messages.send',
                                {'chat_id': id, 'message': text, 'attachment': attachment, 'keyboard': keyboard,

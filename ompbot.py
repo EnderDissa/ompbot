@@ -194,5 +194,6 @@ while True:
                                 tts += "ошибка в ячейке " + check
 
                     VK.lsend(uid, tts)
-    except Exception:
+    except Exception as e:
+        print(e)
         traceback.print_exc()

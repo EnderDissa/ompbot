@@ -118,4 +118,14 @@ class VKHelper:
 
         return keyboard.get_keyboard()
 
+    def create_link_keyboard(self, buttons):
+        keyboard = VkKeyboard(inline=True)
+        for button in buttons:
+            if button.get("newline"): keyboard.add_line()
+            keyboard.add_openlink_button(
+                label=button["label"],
+                payload=button["payload"],
+                link=button["link"]
+            )
 
+        return keyboard.get_keyboard()

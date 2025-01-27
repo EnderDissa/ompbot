@@ -120,11 +120,14 @@ def process_message_new(event, vk_helper, ignored):
         if not ("менеджер" in msg or "админ" in msg):
             return
     if "менеджер" in msg or "админ" in msg:
+        link=f"https://vk.com/gim{groupid}?sel={uid}"
+        buttons = [{"label": "прямая ссылка", "payload": {"type": "userlink"}, "link": link}]
+        link_keyboard = vk_helper.create_link_keyboard(buttons)
         if ignored.is_ignored(uid):
             ignored.remove(uid)
             ignored.save_to_file()
             tts = "Надеюсь, вопрос снят!"
-            Сtts = f"{uname} {usurname} больше не вызывает! Прямая ссылка: vk.com/gim{groupid}?sel={uid}"
+            Сtts = f"{uname} {usurname} больше не вызывает!"
             buttons = [{"label": "ПОЗВАТЬ МЕНЕДЖЕРА", "payload": {"type": "callmanager"}, "color": "positive"}]
             keyboard = vk_helper.create_standart_keyboard(buttons)
 
@@ -132,7 +135,7 @@ def process_message_new(event, vk_helper, ignored):
             ignored.add(uid)
             ignored.save_to_file()
             tts = "Принято, сейчас позову! Напиши свою проблему следующим сообщением. Когда вопрос будет решён, ещё раз напиши команду или нажми на кнопку."
-            Сtts = f"{uname} {usurname} вызывает! Прямая ссылка: vk.com/gim{groupid}?sel={uid}"
+            Сtts = f"{uname} {usurname} вызывает!"
             buttons = [{"label": "СПАСИБО МЕНЕДЖЕР", "payload": {"type": "uncallmanager"}, "color": "negative"}]
             keyboard = vk_helper.create_standart_keyboard(buttons)
         return [
@@ -145,7 +148,7 @@ def process_message_new(event, vk_helper, ignored):
             {
                 "peer_id": 2000000000 + 1,
                 "message": Сtts,
-                "keyboard": None,
+                "keyboard": link_keyboard,
                 "attachment": None
             }
         ]

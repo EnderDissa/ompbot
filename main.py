@@ -1,13 +1,8 @@
 # -*- coding: utf-8 -*-
-import json
-
 import vk_api
-from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType, VkBotMessageEvent
-import requests
+from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
 import traceback
-from datetime import datetime as date
-import re
-from utils import IgnoredList, VKHelper, check_excel, create_excel, IP, initialize
+from utils import IgnoredList, initialize
 from utils import VKHelper
 from utils.log import *
 from ompbot import *

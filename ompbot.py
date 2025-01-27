@@ -8,7 +8,6 @@ from utils import check_excel, create_excel, IP
 
 
 def process_message_event(event, vk_helper):
-    # uid = event.message.from_id
     pl = event.object.get('payload')
     if pl:
         conversation_message_id = event.object['conversation_message_id']
@@ -22,8 +21,6 @@ def process_message_event(event, vk_helper):
 
         if type == "send":
             tts += "\n принята и отправлена на согласование!"
-            # vk_helper.editkb(peer_id=peer_id, cmid=conversation_message_id, type="sended", sender=sender,
-            #           title=title)
             buttons = [
                 {
                     "label": "ОТПРАВЛЕНО",
@@ -128,17 +125,21 @@ def process_message_new(event, vk_helper, ignored):
             ignored.save_to_file()
             tts = "Надеюсь, вопрос снят!"
             Сtts = f"{uname} {usurname} больше не вызывает! Прямая ссылка: vk.com/gim{groupid}?sel={uid}"
+            buttons = [{"label": "ПОЗВАТЬ МЕНЕДЖЕРА", "payload": {"type": "callmanager"}, "color": "positive"}]
+            keyboard = vk_helper.create_standart_keyboard(buttons)
 
         else:
             ignored.add(uid)
             ignored.save_to_file()
             tts = "Принято, сейчас позову! Напиши свою проблему следующим сообщением. Когда вопрос будет решён, ещё раз напиши команду или нажми на кнопку."
             Сtts = f"{uname} {usurname} вызывает! Прямая ссылка: vk.com/gim{groupid}?sel={uid}"
+            buttons = [{"label": "СПАСИБО МЕНЕДЖЕР", "payload": {"type": "uncallmanager"}, "color": "negative"}]
+            keyboard = vk_helper.create_standart_keyboard(buttons)
         return [
             {
                 "peer_id": uid,
                 "message": tts,
-                "keyboard": None,
+                "keyboard": keyboard,
                 "attachment": None
             },
             {
@@ -169,25 +170,6 @@ def process_message_new(event, vk_helper, ignored):
                 elif msgs[0] == "sender":
                     vk_helper.sender(msgs[1])
                     tts = "готово"
-        #
-        # if ignored.is_ignored(uid):
-        #     if not ("менеджер" in msg or "админ" in msg):
-        #         return [0, ""]
-        # if "менеджер" in msg or "админ" in msg:
-        #     if ignored.is_ignored(uid):
-        #         ignored.remove(uid)
-        #         ignored.save_to_file()
-        #         tts = "Надеюсь, вопрос снят!"
-        #         Ltts = uname + " " + usurname + " больше не вызывает. прямая ссылка:\nvk.com/gim" + str(
-        #             groupid) + "?sel=" + str(uid)
-        #         return [3, {uid, tts, Ltts}]
-        #     else:
-        #         ignored.add(uid)
-        #         ignored.save_to_file()
-        #         tts = "Принято, сейчас позову! Напиши свою проблему следующим сообщением. Когда вопрос будет решён, напиши команду ещё раз."
-        #         Ltts = uname + " " + usurname + " вызывает! прямая ссылка:\nvk.com/gim" + str(
-        #             groupid) + "?sel=" + str(uid)
-        #         return [3, {uid, tts, Ltts}]
         attachment = event.object.message['attachments']
         if attachment:
             attachment = attachment[0]

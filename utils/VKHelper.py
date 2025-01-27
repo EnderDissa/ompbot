@@ -4,7 +4,6 @@ import vk_api
 
 class VKHelper:
     def __init__(self, vk_session):
-        # self.vk_session = vk_session
         self.vk = vk_session.get_api()
         self.vk_session = vk_session
 
@@ -106,3 +105,17 @@ class VKHelper:
             )
 
         return keyboard.get_keyboard()
+
+    def create_standart_keyboard(self, buttons):
+        keyboard = VkKeyboard(inline=False)
+        for button in buttons:
+            if button.get("newline"): keyboard.add_line()
+            keyboard.add_button(
+                label=button["label"],
+                payload=button["payload"],
+                color=getattr(VkKeyboardColor, button["color"].upper())
+            )
+
+        return keyboard.get_keyboard()
+
+

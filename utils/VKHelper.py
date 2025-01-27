@@ -6,7 +6,7 @@ class VKHelper:
     def __init__(self, vk_session):
         # self.vk_session = vk_session
         self.vk = vk_session.get_api()
-        self.vk_session=vk_session
+        self.vk_session = vk_session
 
     def lsend(self, id, text):
         print("sended to " + str(id))
@@ -34,8 +34,10 @@ class VKHelper:
         self.vk_session.method('messages.send',
                                {'chat_id': id, 'message': text, 'attachment': attachment, 'keyboard': keyboard,
                                 'random_id': 0})
+
     def sender(self, sender_type):
         pass
+
     def editkb(self, peer_id, cmid, type, sender, title):
         keyboard = vk_api.keyboard.VkKeyboard(inline=True)
         keyboard.add_callback_button(label="ОТПРАВЛЕНО", payload={"type": "sended", 'sender': sender, 'title': title},
@@ -96,9 +98,11 @@ class VKHelper:
     def create_keyboard(self, buttons):
         keyboard = VkKeyboard(inline=True)
         for button in buttons:
+            if button.get("newline"): keyboard.add_line()
             keyboard.add_callback_button(
                 label=button["label"],
                 payload=button["payload"],
                 color=getattr(VkKeyboardColor, button["color"].upper())
             )
+
         return keyboard.get_keyboard()

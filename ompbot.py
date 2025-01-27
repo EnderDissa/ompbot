@@ -59,6 +59,20 @@ def process_message_event(event, vk_helper):
             ]
             keyboard = vk_helper.create_keyboard(buttons)
             vk_helper.edit_keyboard(peer_id, conversation_message_id, keyboard)
+
+        elif type=="annul":
+            tts+=" АННУЛИРОВАНА менеджером!"
+            buttons = [
+                {
+                    "label": "АННУЛИРОВАНО",
+                    "payload": {"type": "annuled", "sender": sender, "title": title},
+                    "color": "negative"
+                }
+            ]
+            keyboard = vk_helper.create_keyboard(buttons)
+            vk_helper.edit_keyboard(peer_id, conversation_message_id, keyboard)
+        else:
+            return
     return [{
         "peer_id": sender,
         "message": tts,
@@ -139,6 +153,7 @@ def process_message_new(event, vk_helper, ignored):
         id = event.chat_id
         uid = event.obj['message']['from_id']
         peer_id = 2000000000 + uid
+        return
 
     else:
         attachment = event.object.message['attachments']
@@ -226,6 +241,12 @@ def process_message_new(event, vk_helper, ignored):
                         "label": "СОГЛАСОВАТЬ",
                         "payload": {"type": "approve", 'sender': uid, 'title': newpath, 'isSended': False},
                         "color": "primary"
+                    },
+                    {
+                        "label": "АННУЛИРОВАТЬ",
+                        "payload": {"type": "annul", 'sender': uid, 'title': newpath, 'isSended': False},
+                        "color": "negative",
+                        "newline": True
                     }
                 ]
                 Ckeyboard = vk_helper.create_keyboard(buttons)
@@ -255,6 +276,6 @@ def process_message_new(event, vk_helper, ignored):
         }]
     return [{
         "peer_id": uid,
-        "message": "0",
+        "message": tts,
     }]
 

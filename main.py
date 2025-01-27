@@ -52,7 +52,10 @@ class Main:
             message = action.get("message", "")
             keyboard = action.get("keyboard")
             attachment = action.get("attachment")
-
+            # message_sync = {
+            #     "user_message": {"peer_id": None, "conversation_message_id": None},
+            #     "manager_message": {"peer_id": None, "conversation_message_id": None}
+            # }
             try:
                 self.VK.send_message(peer_id, message, keyboard, attachment)
             except Exception as e:

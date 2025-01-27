@@ -57,7 +57,9 @@ def process_message_event(event, vk_helper):
             vk_helper.edit_keyboard(peer_id, conversation_message_id, keyboard)
 
         elif type=="annul":
-            tts+=" АННУЛИРОВАНА менеджером!"
+            by_admin = pl['byAdmin']
+            managerflag = " МЕНЕДЖЕРОМ" if by_admin else ""
+            tts+=f" АННУЛИРОВАНА{managerflag}!"
             buttons = [
                 {
                     "label": "АННУЛИРОВАНО",
@@ -218,7 +220,7 @@ def process_message_new(event, vk_helper, ignored):
                 merotitle = check[1][0][5]
                 org = check[1][1][7]
                 orgnomer = str(check[1][2][7])
-                Сtts = f"новая проходка: vk.com/gim{groupid}?sel={uid}\nотправитель: {uname} {usurname}\nорганизатор: {org} ({orgnomer})"\
+                Сtts = f"новая проходка: vk.com/gim{groupid}?sel={uid}\nотправитель: {uname} {usurname}\nорганизатор: {org} (+{orgnomer})"\
                         f"\nназвание мероприятия: {merotitle}\nкорпус: {korpus}\nдата: {data} \nколичество гостей:  {kolgost}"
                 newpath=newpath[5:]
                 buttons = [
@@ -234,12 +236,16 @@ def process_message_new(event, vk_helper, ignored):
                     },
                     {
                         "label": "АННУЛИРОВАТЬ",
-                        "payload": {"type": "annul", 'sender': uid, 'title': newpath, 'isSended': False},
+                        "payload": {"type": "annul", 'sender': uid, 'title': newpath, 'byAdmin': True},
                         "color": "negative",
                         "newline": True
                     }
                 ]
                 Ckeyboard = vk_helper.create_keyboard(buttons)
+
+                # buttons = [{"label": "ОТМЕНИТЬ", "payload": {"type": "annul", 'sender': uid, 'title': newpath, 'byAdmin': False}, "color": "secondary"}]
+                # keyboard = vk_helper.create_keyboard(buttons)
+
                 return [
                     {
                         "peer_id": uid,

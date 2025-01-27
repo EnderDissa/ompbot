@@ -200,7 +200,7 @@ def process_message_new(event, vk_helper, ignored):
             check = check_excel(path)
             if check[0] == "success":
                 rows = check[1]
-                tts += "Принято! Отправил на проверку, ожидайте ответа."
+
                 newname = "СЗ_" + attachment_title[:attachment_title.find(".")] + "_" + "_".join(
                     rows[0][3].replace(":", "-").replace(".", "-").split())
                 newpath = "xlsx\\" + newname + ".xlsx"
@@ -220,6 +220,8 @@ def process_message_new(event, vk_helper, ignored):
                 merotitle = check[1][0][5]
                 org = check[1][1][7]
                 orgnomer = str(check[1][2][7])
+                tts += f"Принято! Отправил на проверку, ожидайте ответа.\nПроверьте данные. В случае несовпадений, вызовите менеджера: организатор: {org} (+{orgnomer})" \
+                       f"\nНазвание мероприятия: {merotitle}\nКорпус: {korpus}\nДата: {data} \nКоличество гостей:  {kolgost}"
                 Сtts = f"новая проходка: vk.com/gim{groupid}?sel={uid}\nотправитель: {uname} {usurname}\nорганизатор: {org} (+{orgnomer})"\
                         f"\nназвание мероприятия: {merotitle}\nкорпус: {korpus}\nдата: {data} \nколичество гостей:  {kolgost}"
                 newpath=newpath[5:]

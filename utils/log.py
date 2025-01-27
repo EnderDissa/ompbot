@@ -20,7 +20,8 @@ logger.addHandler(console_handler)
 def log():
     def info(_):
         logger.info(_)
-
+    def warn(_):
+        logger.warning(_)
     def error(_):
         logger.error(_)
 

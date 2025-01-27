@@ -6,7 +6,6 @@ import re
 from utils import check_excel, create_excel, IP
 
 
-
 def process_message_event(event, vk_helper):
     pl = event.object.get('payload')
     if pl:
@@ -134,7 +133,8 @@ def process_message_new(event, vk_helper, ignored):
         else:
             ignored.add(uid)
             ignored.save_to_file()
-            tts = "Принято, сейчас позову! Напиши свою проблему следующим сообщением. Когда вопрос будет решён, ещё раз напиши команду или нажми на кнопку."
+            tts = "Принято, сейчас позову! Напиши свою проблему следующим сообщением. "\
+                  "Когда вопрос будет решён, ещё раз напиши команду или нажми на кнопку."
             Сtts = f"{uname} {usurname} вызывает!"
             buttons = [{"label": "СПАСИБО МЕНЕДЖЕР", "payload": {"type": "uncallmanager"}, "color": "negative"}]
             keyboard = vk_helper.create_standart_keyboard(buttons)
@@ -163,9 +163,15 @@ def process_message_new(event, vk_helper, ignored):
         attachment = event.object.message['attachments']
         if not attachment:
             if vk_helper.vk_session.method('groups.isMember', {'group_id': groupid, 'user_id': uid}) == 0:
-                tts += "Бот создан для предобработки служебных записок в университете ИТМО и доступен только клубам. Поэтому чтобы иметь доступ к обработке служебных записок необходимо подписаться на это сообщество, ссылку ты можешь найти в еноте или спросить в группе тг!\n\nПосле подписки отправь ещё одно сообщение. Только в случае возникновения проблем пиши \"МЕНЕДЖЕР\""
+                tts += "Бот создан для предобработки служебных записок в университете ИТМО и доступен только клубам. " \
+                       "Поэтому чтобы иметь доступ к обработке служебных записок необходимо подписаться на это " \
+                       "сообщество, ссылку ты можешь найти в еноте или спросить в группе тг!\n\nПосле подписки " \
+                       "отправь ещё одно сообщение. Только в случае возникновения проблем пиши \"МЕНЕДЖЕР\""
             else:
-                tts += "Отправь мне служебную записку, я проведу предпроверку. Если всё хорошо, я отправлю её на обработку, после чего жди сообщения от менеджера. Если возникла проблема, пиши \"МЕНЕДЖЕР\"\nP.S. обязательно отправляй служебные записки в формате, указанном в yonote: " + yonote
+                tts += "Отправь мне служебную записку, я проведу предпроверку. Если всё хорошо, я отправлю её на " \
+                       "обработку, после чего жди сообщения от менеджера. Если возникла проблема, " \
+                       "пиши \"МЕНЕДЖЕР\"\nP.S. обязательно отправляй служебные записки в формате, указанном в " \
+                       "yonote: " + yonote
         if msgs:
             if uid in admin:
                 if msgs[0] == "stop":
@@ -182,7 +188,8 @@ def process_message_new(event, vk_helper, ignored):
             attachment_url = attachment['url']
             if (not (re.match(r'СЗ_[а-яёА-ЯЁa-zA-Z]+\.', attachment_title))) or (
                     "шаблон" in attachment_title and uid not in admin):
-                tts += "ошибка в названии файла. пример:\nСЗ_шаблон.xlsx\nдопускается:\nСЗ_шаблон.метаинф.xlsx\nВместо \"шаблон\" везде название клуба (без пробелов, лучше латиницей)."
+                tts += "ошибка в названии файла. пример:\nСЗ_шаблон.xlsx\nдопускается:\nСЗ_шаблон.метаинф.xlsx\n" \
+                       "Вместо \"шаблон\" везде название клуба (без пробелов, лучше латиницей)."
                 return [1, {uid, tts}]
             attachment_title = re.search(r'СЗ_[а-яёА-ЯЁa-zA-Z]+\.', attachment_title).group()[3:]
 
@@ -205,16 +212,14 @@ def process_message_new(event, vk_helper, ignored):
                 jsonAnswer = vk_helper.vk.docs.save(file=result['file'], title=newname, tags=[])
                 attachment = f"doc{jsonAnswer['doc']['owner_id']}_{jsonAnswer['doc']['id']}"
 
-                # VK.lsend_withA(uid, tts, attachment)
                 kolgost = check[1][-1][0]
                 korpus = check[1][0][1]
                 data = check[1][0][3]
                 merotitle = check[1][0][5]
                 org = check[1][1][7]
                 orgnomer = str(check[1][2][7])
-                Сtts = "новая проходка: vk.com/gim" + str(groupid) + "?sel=" + str(
-                    uid) + "\nотправитель: " + uname + " " + usurname + "\nорганизатор: " + org + "(" + orgnomer + ")" + "\nназвание мероприятия: " + merotitle + "\nкорпус: " + korpus + "\nдата: " + data + "\nколичество гостей: " + str(
-                    kolgost)
+                Сtts = f"новая проходка: vk.com/gim{groupid}?sel={uid}\nотправитель: {uname} {usurname}\nорганизатор: {org} ({orgnomer})"\
+                        f"\nназвание мероприятия: {merotitle}\nкорпус: {korpus}\nдата: {data} \nколичество гостей:  {kolgost}"
                 newpath=newpath[5:]
                 buttons = [
                     {
@@ -250,7 +255,8 @@ def process_message_new(event, vk_helper, ignored):
                     }
                 ]
             elif check[0] == "00":
-                tts += "ошибка в одной из ячеек, которые нельзя менять. перепроверьте A1, A2, B2, C1, C2, D2, E1, E2, F2, G1, G2, G3, H1 по шаблону"
+                tts += "ошибка в одной из ячеек, которые нельзя менять."\
+                       " перепроверьте A1, A2, B2, C1, C2, D2, E1, E2, F2, G1, G2, G3, H1 по шаблону"
             elif check[0] == "01":
                 tts += "ошибка в одной из ячеек, которые необходимо было изменить. поменяйте шаблон!"
             else:

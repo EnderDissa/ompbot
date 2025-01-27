@@ -21,7 +21,7 @@ class IgnoredList:
 
     def clear(self):
         self.ignored.clear()
-        print("Список игнорируемых пользователей очищен.")
+        self.info("Список игнорируемых пользователей очищен.")
 
     def save_to_file(self):
         try:
@@ -35,6 +35,6 @@ class IgnoredList:
         try:
             with open("ignored.txt", 'r') as file:
                 self.ignored = set(map(lambda x: int(x.strip()), file.readlines()))
-            print(f"Список игнорируемых загружен.")
+            return (f"Список игнорируемых загружен.")
         except Exception as e:
             print(f"Ошибка при загрузке: {e}")

@@ -2,10 +2,11 @@ from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 import vk_api
 
 
-class VK:
+class VKHelper:
     def __init__(self, vk_session):
-        self.vk_session = vk_session
+        # self.vk_session = vk_session
         self.vk = vk_session.get_api()
+        self.vk_session=vk_session
 
     def lsend(self, id, text):
         print("sended to " + str(id))
@@ -20,7 +21,7 @@ class VK:
         print("sended to " + str(id))
         self.vk_session.method('messages.send', {'chat_id': id, 'message': text, 'random_id': 0})
 
-    def send_withA(self, id, text, attachment, title, sender, kolgost=0):
+    def send_withA(self, id, text, attachment, title, sender):
         print("sended to " + str(id))
         keyboard = vk_api.keyboard.VkKeyboard(inline=True)
         keyboard.add_callback_button(label="ОТПРАВИТЬ", payload={"type": "send", 'sender': sender, 'title': title},
@@ -33,7 +34,8 @@ class VK:
         self.vk_session.method('messages.send',
                                {'chat_id': id, 'message': text, 'attachment': attachment, 'keyboard': keyboard,
                                 'random_id': 0})
-
+    def sender(self, sender_type):
+        pass
     def editkb(self, peer_id, cmid, type, sender, title):
         keyboard = vk_api.keyboard.VkKeyboard(inline=True)
         keyboard.add_callback_button(label="ОТПРАВЛЕНО", payload={"type": "sended", 'sender': sender, 'title': title},
@@ -56,5 +58,47 @@ class VK:
         self.vk.messages.edit(peer_id=peer_id, conversation_message_id=cmid, keyboard=keyboard, message=original_text,
                               attachment=original_attachment)
 
-    def sender(self, sender_type):
-        pass
+    def send_message(self, peer_id, message, keyboard=None, attachment=None):
+        payload = {
+            "peer_id": peer_id,
+            "message": message,
+            "random_id": 0
+        }
+        if keyboard:
+            payload["keyboard"] = keyboard
+        if attachment:
+            payload["attachment"] = attachment
+
+        try:
+            self.vk.messages.send(**payload)
+        except vk_api.exceptions.ApiError as e:
+            raise Exception(f"Ошибка отправки сообщения: {e}")
+
+    def edit_keyboard(self, peer_id, cmid, keyboard):
+        try:
+            original_message = self.vk.messages.getById(
+                peer_id=peer_id,
+                cmids=cmid)
+            original_text = original_message['items'][0]['text']
+            original_attachment = original_message['items'][0]['attachments'][0]['doc']
+            original_attachment = "doc" + str(original_attachment['owner_id']) + '_' + str(original_attachment['id'])
+
+            self.vk.messages.edit(
+                peer_id=peer_id,
+                conversation_message_id=cmid,
+                keyboard=keyboard,
+                message=original_text,
+                attachment=original_attachment
+            )
+        except vk_api.exceptions.ApiError as e:
+            raise Exception(f"Ошибка изменения клавиатуры: {e}")
+
+    def create_keyboard(self, buttons):
+        keyboard = VkKeyboard(inline=True)
+        for button in buttons:
+            keyboard.add_callback_button(
+                label=button["label"],
+                payload=button["payload"],
+                color=getattr(VkKeyboardColor, button["color"].upper())
+            )
+        return keyboard.get_keyboard()

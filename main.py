@@ -1,0 +1,69 @@
+# -*- coding: utf-8 -*-
+import json
+
+import vk_api
+from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType, VkBotMessageEvent
+import requests
+import traceback
+from datetime import datetime as date
+import re
+from utils import IgnoredList, VKHelper, check_excel, create_excel, IP, initialize
+from utils import VKHelper
+from utils.log import *
+from ompbot import *
+
+
+class Main:
+    def __init__(self):
+        self.token = initialize()
+        self.group_id = 228288169
+        self.vk_session = vk_api.VkApi(token=self.token)
+        self.VK = VKHelper(self.vk_session)
+
+        self.info, self.error = log()
+        self.longpoll = VkBotLongPoll(self.vk_session, self.group_id)
+        self.ignored = IgnoredList()
+        self.info(self.ignored.load_from_file())
+        self.info("готов!\n")
+
+    def run(self):
+        while True:
+            try:
+                for event in self.longpoll.listen():
+                    self.process_event(event)
+            except Exception as e:
+                self.error(e)
+                traceback.print_exc()
+
+    def process_event(self, event):
+        if event.type == VkBotEventType.MESSAGE_NEW:
+            self.handle_message_new(event)
+        elif event.type == VkBotEventType.MESSAGE_EVENT:
+            self.handle_message_event(event)
+
+    def handle_message_new(self, event):
+        result = process_message_new(event, self.VK, self.ignored)
+        self.handle_actions(result)
+
+    def handle_message_event(self, event):
+        result = process_message_event(event, self.VK)
+        self.handle_actions(result)
+
+    def handle_actions(self, actions):
+        if not actions:
+            return
+        for action in actions:
+            peer_id = action.get("peer_id")
+            message = action.get("message", "")
+            keyboard = action.get("keyboard")
+            attachment = action.get("attachment")
+
+            try:
+                self.VK.send_message(peer_id, message, keyboard, attachment)
+            except Exception as e:
+                self.error(f"Ошибка обработки действия: {e}")
+
+
+if __name__ == '__main__':
+    bot = Main()
+    bot.run()

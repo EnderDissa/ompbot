@@ -47,6 +47,7 @@ class Main:
     def handle_actions(self, actions):
         if not actions:
             return
+        print(actions)
         for action in actions:
             peer_id = action.get("peer_id")
             message = action.get("message", "")

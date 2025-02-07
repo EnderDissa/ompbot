@@ -28,7 +28,7 @@ def process_message_event(event, vk_helper):
                 },
                 {
                     "label": "СОГЛАСОВАТЬ",
-                    "payload": {"type": "approve", "sender": sender, "title": title, "isSended": False},
+                    "payload": {"type": "approve", "sender": sender, "title": title, "isSended": True},
                     "color": "primary"
                 }
             ]
@@ -192,7 +192,10 @@ def process_message_new(event, vk_helper, ignored):
                     "шаблон" in attachment_title and uid not in admin):
                 tts += "ошибка в названии файла. пример:\nСЗ_шаблон.xlsx\nдопускается:\nСЗ_шаблон.метаинф.xlsx\n" \
                        "Вместо \"шаблон\" везде название клуба (без пробелов, лучше латиницей)."
-                return [1, {uid, tts}]
+                return [{
+                    "peer_id": uid,
+                    "message": tts,
+                }]
             attachment_title = re.search(r'СЗ_[а-яёА-ЯЁa-zA-Z]+\.', attachment_title).group()[3:]
 
             path = IP.attachment_extract(attachment_url, attachment_title)

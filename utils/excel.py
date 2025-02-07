@@ -51,9 +51,12 @@ def check_excel(path):
             for _ in row[2].lower():
                 if _ not in cyrillic_lower_letters: return "C" + col + _
             row[2] = row[2][0].upper() + row[2][1:].lower()
-            for _ in str(row[3]).lower():
-                if _ not in cyrillic_lower_letters: return "D" + col
-            row[3] = row[3][0].upper() + row[3][1:].lower()
+            if str(row[3])!="None":
+                for _ in str(row[3]).lower():
+                    if _ not in cyrillic_lower_letters:
+                        return "D" + col
+                row[3] = row[3][0].upper() + row[3][1:].lower()
+            else: row[3]=""
             if not (row[4].isdigit() or not (re.findall(r"\d{10}", row[4]))) or row[4][:2] == '00': return "E" + col
             if not (row[5].isdigit()): return "F" + col
             digits = re.findall(r"7\d{10}", row[5])[0]

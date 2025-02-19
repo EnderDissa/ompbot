@@ -4,7 +4,6 @@ from openpyxl.styles import PatternFill, Side, Border
 
 
 def check_excel(path):
-    row = []
     rows = []
     data = openpyxl.load_workbook(path)
     sheet = data.active
@@ -27,7 +26,7 @@ def check_excel(path):
             return "01", rows
         i = 0;
         j = 0
-        cyrillic_lower_letters = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'
+        cyrillic_lower_letters = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя-'
         while True:
             j += 1
             col = str(j)
@@ -58,7 +57,7 @@ def check_excel(path):
                 row[3] = row[3][0].upper() + row[3][1:].lower()
             else: row[3]=""
             if not (row[4].isdigit() or not (re.findall(r"\d{10}", row[4]))) or row[4][:2] == '00': return "E" + col
-            if not (row[5].isdigit()): return "F" + col
+            if not (row[5].isdigit()) or not (re.findall(r"7\d{10}", row[5])): return "F" + col
             digits = re.findall(r"7\d{10}", row[5])[0]
             if not digits: return "F" + col
             if lenrow > 2:

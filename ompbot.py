@@ -4,6 +4,7 @@ import requests
 from datetime import datetime as date
 import re
 from utils import check_excel, create_excel, IP
+import os
 
 
 def process_message_event(event, vk_helper):
@@ -32,8 +33,8 @@ def process_message_event(event, vk_helper):
                     "color": "primary"
                 }
             ]
-            keyboard=vk_helper.create_keyboard(buttons)
-            vk_helper.edit_keyboard(peer_id, conversation_message_id,keyboard)
+            keyboard = vk_helper.create_keyboard(buttons)
+            vk_helper.edit_keyboard(peer_id, conversation_message_id, keyboard)
 
         elif type == "approve":
             is_sended = pl['isSended']
@@ -56,10 +57,10 @@ def process_message_event(event, vk_helper):
             keyboard = vk_helper.create_keyboard(buttons)
             vk_helper.edit_keyboard(peer_id, conversation_message_id, keyboard)
 
-        elif type=="annul":
+        elif type == "annul":
             by_admin = pl['byAdmin']
             managerflag = " МЕНЕДЖЕРОМ" if by_admin else ""
-            tts+=f" АННУЛИРОВАНА{managerflag}!"
+            tts += f" АННУЛИРОВАНА{managerflag}!"
             buttons = [
                 {
                     "label": "АННУЛИРОВАНО",
@@ -110,6 +111,7 @@ def process_message_new(event, vk_helper, ignored):
 
     uid = event.message.from_id
     peer_id = 2000000000 + uid
+    msgraw = event.message.text
     msg = event.message.text.lower()
     msgs = msg.split()
 
@@ -121,7 +123,7 @@ def process_message_new(event, vk_helper, ignored):
         if not ("менеджер" in msg or "админ" in msg):
             return
     if "менеджер" in msg or "админ" in msg:
-        link=f"https://vk.com/gim{groupid}?sel={uid}"
+        link = f"https://vk.com/gim{groupid}?sel={uid}"
         buttons = [{"label": "прямая ссылка", "payload": {"type": "userlink"}, "link": link}]
         link_keyboard = vk_helper.create_link_keyboard(buttons)
         if ignored.is_ignored(uid):
@@ -135,7 +137,7 @@ def process_message_new(event, vk_helper, ignored):
         else:
             ignored.add(uid)
             ignored.save_to_file()
-            tts = "Принято, сейчас позову! Напиши свою проблему следующим сообщением. "\
+            tts = "Принято, сейчас позову! Напиши свою проблему следующим сообщением. " \
                   "Когда вопрос будет решён, ещё раз напиши команду или нажми на кнопку."
             Сtts = f"{uname} {usurname} вызывает!"
             buttons = [{"label": "СПАСИБО МЕНЕДЖЕР", "payload": {"type": "uncallmanager"}, "color": "negative"}]
@@ -179,8 +181,17 @@ def process_message_new(event, vk_helper, ignored):
                 if msgs[0] == "stop":
                     exit()
                 elif msgs[0] == "sender":
-                    vk_helper.sender(msgs[1])
-                    tts = "готово"
+                    sender_type = msgs[1]
+                    text = msgraw[msgraw.find("\n"):]
+                    tts = f"Готово. Проверь текст и отправляй рассылку {sender_type}:\n\n{text}"
+                    buttons = [{"label": "ОТПРАВИТЬ РАССЫЛКУ",
+                                "payload": {"type": "sender", "sender": sender_type, "text": text}, "color": "primary"}]
+                    keyboard = vk_helper.create_keyboard(buttons)
+                    return [{
+                        "peer_id": uid,
+                        "message": tts,
+                        "keyboard": keyboard
+                    }]
         attachment = event.object.message['attachments']
         if attachment:
             attachment = attachment[0]
@@ -200,34 +211,42 @@ def process_message_new(event, vk_helper, ignored):
 
             path = IP.attachment_extract(attachment_url, attachment_title)
 
-            check = check_excel(path)
+            try:
+                check = check_excel(path)
+            except Exception as exc:
+                check = ["ER", exc]
             if check[0] == "success":
                 rows = check[1]
+                kolgost = rows[-1][0]
+                korpus = rows[0][1]
+                data = rows[0][3]
+                merotitle = rows[0][5]
+                org = rows[1][7]
+                orgnomer = str(rows[2][7])
 
-                newname = "СЗ_" + attachment_title[:attachment_title.find(".")] + "_" + "_".join(
+                newname = "СЗ_" + attachment_title[:attachment_title.find(".")] + "_"+korpus[0]+korpus[-1]+"_" + "_".join(
                     rows[0][3].replace(":", "-").replace(".", "-").split())
                 newpath = "xlsx\\" + newname + ".xlsx"
+                if os.path.exists(newpath):
+                    newname+="(1)"
+                    newpath = "xlsx\\" + newname + ".xlsx"
+
                 create_excel(newpath, rows)
 
                 result = json.loads(requests.post(
                     vk_helper.vk.docs.getMessagesUploadServer(type='doc',
-                                                             peer_id=event.object.message['peer_id'])[
+                                                              peer_id=event.object.message['peer_id'])[
                         'upload_url'],
                     files={'file': open(newpath, 'rb')}).text)
                 jsonAnswer = vk_helper.vk.docs.save(file=result['file'], title=newname, tags=[])
                 attachment = f"doc{jsonAnswer['doc']['owner_id']}_{jsonAnswer['doc']['id']}"
 
-                kolgost = check[1][-1][0]
-                korpus = check[1][0][1]
-                data = check[1][0][3]
-                merotitle = check[1][0][5]
-                org = check[1][1][7]
-                orgnomer = str(check[1][2][7])
-                tts += f"Принято! Отправил на проверку, ожидайте ответа.\nПроверьте данные. В случае несовпадений, вызовите менеджера: организатор: {org} (+{orgnomer})" \
-                       f"\nНазвание мероприятия: {merotitle}\nКорпус: {korpus}\nДата: {data} \nКоличество гостей:  {kolgost}"
-                Сtts = f"новая проходка: vk.com/gim{groupid}?sel={uid}\nотправитель: {uname} {usurname}\nорганизатор: {org} (+{orgnomer})"\
-                        f"\nназвание мероприятия: {merotitle}\nкорпус: {korpus}\nдата: {data} \nколичество гостей:  {kolgost}"
-                newpath=newpath[5:]
+
+                tts += f"Принято! Отправил на проверку, ожидайте ответа.\nПроверьте данные. В случае несовпадений, вызовите менеджера: \nДата: {data}\nорганизатор: {org} (+{orgnomer})" \
+                       f"\nНазвание мероприятия: {merotitle}\nКорпус: {korpus} \nКоличество гостей:  {kolgost}"
+                Сtts = f"новая проходка: vk.com/gim{groupid}?sel={uid}\nдата: {data}\nотправитель: {uname} {usurname}\nорганизатор: {org} (+{orgnomer})" \
+                       f"\nназвание мероприятия: {merotitle}\nкорпус: {korpus} \nколичество гостей:  {kolgost}"
+                newpath = newpath[5:]
                 buttons = [
                     {
                         "label": "ОТПРАВИТЬ",
@@ -250,7 +269,7 @@ def process_message_new(event, vk_helper, ignored):
 
                 # buttons = [{"label": "ОТМЕНИТЬ", "payload": {"type": "annul", 'sender': uid, 'title': newpath, 'byAdmin': False}, "color": "secondary"}]
                 # keyboard = vk_helper.create_keyboard(buttons)
-
+                #todo: сделать синхронизацию, чтобы можно было отменять со стороны пользователя
                 return [
                     {
                         "peer_id": uid,
@@ -266,18 +285,15 @@ def process_message_new(event, vk_helper, ignored):
                     }
                 ]
             elif check[0] == "00":
-                tts += "ошибка в одной из ячеек, которые нельзя менять."\
+                tts += "ошибка в одной из ячеек, которые нельзя менять." \
                        " перепроверьте A1, A2, B2, C1, C2, D2, E1, E2, F2, G1, G2, G3, H1 по шаблону"
             elif check[0] == "01":
                 tts += "ошибка в одной из ячеек, которые необходимо было изменить. поменяйте шаблон!"
+            elif check[0] == "ER":
+                tts += "неопознанная ошибка, позовите менеджера: " + check
             else:
                 tts += "ошибка в ячейке " + check
         return [{
             "peer_id": uid,
             "message": tts,
         }]
-    return [{
-        "peer_id": uid,
-        "message": tts,
-    }]
-

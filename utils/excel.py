@@ -19,6 +19,8 @@ def check_excel(path):
     rukovod = sheet['H2'].value
     rukovod_phone = sheet['H3'].value
 
+    correct_meta_otv = ['Калугина Анна Владимировна, ведущий менеджер ОМП', 79514373833]
+
     date = date_time.split()[0]
 
     if correct_meta == meta:
@@ -26,7 +28,7 @@ def check_excel(path):
             return "01", rows
         i = 0;
         j = 0
-        cyrillic_lower_letters = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя-'
+        cyrillic_lower_letters = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя- '
         while True:
             j += 1
             col = str(j)
@@ -37,12 +39,19 @@ def check_excel(path):
             col = str(i)
             if sheet['A' + col].value is None: break
             row = [sheet['A' + col].value, sheet['B' + col].value.strip(), sheet['C' + col].value.strip(),
-                   str(sheet['D' + col].value).strip(), str(sheet['E' + col].value).strip().zfill(10),
+                   str(sheet['D' + col].value).strip(), str(sheet['E' + col].value).replace(" ", "").zfill(10),
                    str(sheet['F' + col].value).strip(), sheet['G' + col].value, sheet['H' + col].value]
 
             if i < 3:
+                if i == 2: row[6] = correct_meta_otv[0]
                 rows.append(row)
                 continue
+            if i == 3:
+
+                digits = re.findall(r"7\d{10}", str(int(float(row[6]))))[0]
+                row[6] = correct_meta_otv[1]
+                digits = re.findall(r"7\d{10}", str(int(float(row[7]))))[0]
+                row[7] = digits
             if row[0] != i - 2: return "A" + col
             for _ in row[1].lower():
                 if _ not in cyrillic_lower_letters: return "B" + col
@@ -50,15 +59,22 @@ def check_excel(path):
             for _ in row[2].lower():
                 if _ not in cyrillic_lower_letters: return "C" + col + _
             row[2] = row[2][0].upper() + row[2][1:].lower()
-            if str(row[3])!="None":
+            if str(row[3]) != "None":
                 for _ in str(row[3]).lower():
                     if _ not in cyrillic_lower_letters:
                         return "D" + col
                 row[3] = row[3][0].upper() + row[3][1:].lower()
-            else: row[3]=""
-            if not (row[4].isdigit() or not (re.findall(r"\d{10}", row[4]))) or row[4][:2] == '00': return "E" + col
-            if not (row[5].isdigit()) or not (re.findall(r"7\d{10}", row[5])): return "F" + col
-            digits = re.findall(r"7\d{10}", row[5])[0]
+            else:
+                row[3] = ""
+
+            if not ((row[4].isdigit() or row[4].replace(".", "", 1).isdigit()) or not (
+            re.findall(r"\d{10}", row[4]))) or row[4][:2] == '00': return "E" + col
+            print(str(int(float(row[4]))))
+            digits = re.findall(r"\d{10}", str(int(float(row[4]))).zfill(10))[0]
+            row[4] = digits
+            if not (row[5].isdigit() or row[5].replace(".", "", 1).isdigit()) or not (
+            re.findall(r"7\d{10}", row[5])): return "F" + col
+            digits = re.findall(r"7\d{10}", str(int(float(row[5]))))[0]
             if not digits: return "F" + col
             if lenrow > 2:
                 nomer = "8-" + digits[1:4] + "-" + digits[4:7] + "-" + digits[7:9] + "-" + digits[9:]  # 8-xxx-xxx-xx-xx

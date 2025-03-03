@@ -217,7 +217,7 @@ def process_message_new(event, vk_helper, ignored):
                 check = ["ER", exc]
             if check[0] == "success":
                 rows = check[1]
-                kolgost = rows[-1][0]
+                kolgost = int(float(rows[-1][0]))
                 korpus = rows[0][1]
                 data = rows[0][3]
                 merotitle = rows[0][5]
@@ -290,7 +290,7 @@ def process_message_new(event, vk_helper, ignored):
             elif check[0] == "01":
                 tts += "ошибка в одной из ячеек, которые необходимо было изменить. поменяйте шаблон!"
             elif check[0] == "ER":
-                tts += "неопознанная ошибка, позовите менеджера: " + check
+                tts += "неопознанная ошибка, позовите менеджера: " + str(check[1])
             else:
                 tts += "ошибка в ячейке " + check
         return [{

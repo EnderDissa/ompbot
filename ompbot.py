@@ -244,8 +244,8 @@ def process_message_new(event, vk_helper, ignored):
 
                 tts += f"Принято! Отправил на проверку, ожидайте ответа.\nПроверьте данные. В случае несовпадений, вызовите менеджера: \nДата: {data}\nорганизатор: {org} (+{orgnomer})" \
                        f"\nНазвание мероприятия: {merotitle}\nКорпус: {korpus} \nКоличество гостей:  {kolgost}"
-                Сtts = f"новая проходка: vk.com/gim{groupid}?sel={uid}\nдата: {data}\nотправитель: {uname} {usurname}\nорганизатор: {org} (+{orgnomer})" \
-                       f"\nназвание мероприятия: {merotitle}\nкорпус: {korpus} \nколичество гостей:  {kolgost}"
+                Сtts = f"новая проходка: vk.com/gim{groupid}?sel={uid}\nдата: {data}\nорганизатор: {org} (+{orgnomer})" \
+                       f"\nколичество гостей:  {kolgost}\nназвание мероприятия: {merotitle}\nкорпус: {korpus} \nотправитель: {uname} {usurname}"
                 newpath = newpath[5:]
                 buttons = [
                     {

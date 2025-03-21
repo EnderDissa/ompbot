@@ -269,7 +269,7 @@ def process_message_new(event, vk_helper, ignored):
 
                 # buttons = [{"label": "ОТМЕНИТЬ", "payload": {"type": "annul", 'sender': uid, 'title': newpath, 'byAdmin': False}, "color": "secondary"}]
                 # keyboard = vk_helper.create_keyboard(buttons)
-                #todo: сделать синхронизацию, чтобы можно было отменять со стороны пользователя
+                # todo: сделать синхронизацию, чтобы можно было отменять со стороны пользователя
                 return [
                     {
                         "peer_id": uid,

@@ -69,7 +69,6 @@ def check_excel(path):
 
             if not ((row[4].isdigit() or row[4].replace(".", "", 1).isdigit()) or not (
             re.findall(r"\d{10}", row[4]))) or row[4][:2] == '00': return "E" + col
-            print(str(int(float(row[4]))))
             digits = re.findall(r"\d{10}", str(int(float(row[4]))).zfill(10))[0]
             row[4] = digits
             if not (row[5].isdigit() or row[5].replace(".", "", 1).isdigit()) or not (

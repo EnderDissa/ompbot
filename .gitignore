@@ -2,3 +2,4 @@ token.txt
 ignored.txt
 *.xlsx
 *.log
+*.yml

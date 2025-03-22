@@ -81,16 +81,30 @@ class VKHelper:
                 peer_id=peer_id,
                 cmids=cmid)
             original_text = original_message['items'][0]['text']
-            original_attachment = original_message['items'][0]['attachments'][0]['doc']
-            original_attachment = "doc" + str(original_attachment['owner_id']) + '_' + str(original_attachment['id'])
-
-            self.vk.messages.edit(
-                peer_id=peer_id,
-                conversation_message_id=cmid,
-                keyboard=keyboard,
-                message=original_text,
-                attachment=original_attachment
-            )
+            attachments = original_message['items'][0].get('attachments', [])
+            if attachments:
+                doc = attachments[0].get('doc')
+                if doc:
+                    original_attachment = "doc" + str(doc['owner_id']) + '_' + str(doc['id'])
+                else:
+                    original_attachment = None
+            else:
+                original_attachment = None
+            if keyboard is None:
+                self.vk.messages.edit(
+                    peer_id=peer_id,
+                    conversation_message_id=cmid,
+                    message=original_text,
+                    attachment=original_attachment
+                )
+            else:
+                self.vk.messages.edit(
+                    peer_id=peer_id,
+                    conversation_message_id=cmid,
+                    keyboard=keyboard,
+                    message=original_text,
+                    attachment=original_attachment
+                )
         except vk_api.exceptions.ApiError as e:
             raise Exception(f"Ошибка изменения клавиатуры: {e}")
 
@@ -103,8 +117,7 @@ class VKHelper:
                 payload=button["payload"],
                 color=getattr(VkKeyboardColor, button["color"].upper())
             )
-
-        return keyboard.get_keyboard()
+        return keyboard.get_keyboard() if buttons else None
 
     def create_standart_keyboard(self, buttons):
         keyboard = VkKeyboard(inline=False)

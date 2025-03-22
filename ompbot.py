@@ -6,18 +6,22 @@ import re
 from utils import check_excel, create_excel, IP
 import os
 
+from utils.user_list import UserList
+
 
 def process_message_event(event, vk_helper):
     pl = event.object.get('payload')
+    user_list = UserList()
     if pl:
         conversation_message_id = event.object['conversation_message_id']
         peer_id = event.object['peer_id']
 
         type = pl['type']
         sender = int(pl['sender'])
-        title = pl['title']
-
-        tts = "Ваша служебная записка " + title
+        if type in ['send','approve', 'annul']:
+            title = pl['title']
+            tts = "Ваша служебная записка " + title
+        else: tts=""
 
         if type == "send":
             tts += "\n принята и отправлена на согласование!"
@@ -39,9 +43,9 @@ def process_message_event(event, vk_helper):
         elif type == "approve":
             is_sended = pl['isSended']
             if is_sended:
-                tts += "\nсогласована и внесена в систему для отображения на мониторе охраны! Обращаем внимание на то, что клубы обязаны следить за своими гостями на территории университета, в частности не допускать их самостоятельного нахождения на территории вне мероприятия. В случае нарушений этого требования, клубу может быть полностью ограничен доступ к данному сервису."
+                tts += "\nсогласована и внесена в систему для отображения на мониторе охраны!"
             else:
-                tts += "\nсогласована и внесена в систему для получения QR на терминале! Обращаем внимание на то, что клубы обязаны следить за своими гостями на территории университета, в частности не допускать их самостоятельного нахождения на территории вне мероприятия. В случае нарушений этого требования, клубу может быть полностью ограничен доступ к данному сервису."
+                tts += "\nсогласована и внесена в систему для получения QR на терминале!"
             buttons = [
                 {
                     "label": "ОТПРАВЛЕНО",
@@ -70,6 +74,18 @@ def process_message_event(event, vk_helper):
             ]
             keyboard = vk_helper.create_keyboard(buttons)
             vk_helper.edit_keyboard(peer_id, conversation_message_id, keyboard)
+        elif type=="club":
+            status=pl['status']
+            club=pl['club']
+            if status=="decline":
+                tts+="Отмена! Отправь мне служебную записку с правильным названием."
+            elif status=="accept":
+                tts+=f"Принято! Ты связал свой айди с клубом «{club}». Теперь отправь свою служебную записку заново"
+                user_list.add(sender,club)
+            keyboard = None
+            vk_helper.edit_keyboard(peer_id, conversation_message_id, keyboard)
+
+
         else:
             return
     return [{
@@ -83,6 +99,8 @@ def process_message_new(event, vk_helper, ignored):
     yonote = 'https://ursi.yonote.ru/share/clubs/doc/sluzhebnye-zapiski-i-prohod-gostej-bihQHvmk8w'
     groupid = 228288169
     admin = [297002785]
+    user_list = UserList()
+    user_list.load_from_file()
 
     time = int(str(date.now().time())[:2])
     weekday = date.today().weekday()
@@ -122,6 +140,7 @@ def process_message_new(event, vk_helper, ignored):
     if ignored.is_ignored(uid):
         if not ("менеджер" in msg or "админ" in msg):
             return
+
     if "менеджер" in msg or "админ" in msg:
         link = f"https://vk.com/gim{groupid}?sel={uid}"
         buttons = [{"label": "прямая ссылка", "payload": {"type": "userlink"}, "link": link}]
@@ -208,6 +227,21 @@ def process_message_new(event, vk_helper, ignored):
                     "message": tts,
                 }]
             attachment_title = re.search(r'СЗ_[а-яёА-ЯЁa-zA-Z]+\.', attachment_title).group()[3:]
+            club_name=attachment_title[:-1]
+
+
+            if club_name not in user_list.get_clubs(uid):
+                tts+=f"Вы хотите связать свой аккаунт с клубом «{club_name}». Обратите внимание, если до этого уже связывали аккаунт с клубом, но сейчас написали другое название в СЗ, отправьте корректную записку или вызовите менеджера. Используйте одно название для всех СЗ_название.\nНажимая кнопку ПОДТВЕРДИТЬ и продолжая пользоваться сервисом вы соглашаетесь с правилами пользования сервисом и подтверждаете, что:\n1) данные в записках корректны и принадлежат реальным людям.\n2) знаете: клубы обязаны следить за своими гостями на территории университета, в частности не допускать их самостоятельного нахождения на территории вне мероприятия.\n3) ознакомлены с графиком работы бота: пн-чт 10:00-17:00, пт 10:00-16:00. В остальное время записки не обрабатываются, так как не работает ни УФБ, ни ОМП. За редким исключением, вашу служебную записку будет некому обработать (при этом отправлять заранее можно и нужно)\n5) знаю, где взять информацию о формате СЗ и командах бота: https://ursi.yonote.ru/share/clubs/doc/sluzhebnye-zapiski-i-prohod-gostej-bihQHvmk8w. \n\nВ случае нарушений этих простых правил, клубу может быть полностью ограничен доступ к сервису."
+                buttons = [
+                    {"label": "ПОДТВЕРДИТЬ", "payload": {"type": "club",'sender': uid, "status":"accept","club":club_name}, "color": "positive"},
+                    {"label": "ОТМЕНИТЬ", "payload": {"type": "club",'sender': uid,"status":"decline","club":club_name}, "color": "negative"}
+                ]
+                keyboard = vk_helper.create_keyboard(buttons)
+                return [{
+                        "peer_id": uid,
+                        "message": tts,
+                        "keyboard": keyboard
+                    }]
 
             path = IP.attachment_extract(attachment_url, attachment_title)
 

@@ -6,15 +6,18 @@ class UserList:
         self.clubs = set()
 
     def add(self, uid, club):
+        self.load_from_file()
+
         if uid not in self.users:
             self.users[uid] = set()
-            print(f"Пользователь {uid} добавлен в список.")
         if club not in self.users[uid]:
             self.users[uid].add(club)
             self.clubs.add(club)
             print(f"Пользователь {uid} теперь руководит клубом {club}.")
         else:
             print(f"Пользователь {uid} уже руководит клубом {club}.")
+
+        self.save_to_file()
 
     # def remove(self, uid, club=None):
     #     if uid not in self.users:
@@ -49,13 +52,12 @@ class UserList:
         try:
             with open(filename, "w", encoding="utf-8") as file:
                 yaml.dump({str(uid): list(clubs) for uid, clubs in self.users.items()}, file, allow_unicode=True)
-            print(f"Список пользователей сохранён в '{filename}'.")
         except Exception as e:
             print(f"Ошибка при сохранении: {e}")
 
     def load_from_file(self, filename="users.yml"):
         try:
-            with open(filename, "r", encoding="utf-8") as file:
+            with open(filename, "r+", encoding="utf-8") as file:
                 data = yaml.safe_load(file)
                 if data is not None:
                     self.users = {int(uid): set(clubs) for uid, clubs in data.items()}
@@ -63,6 +65,5 @@ class UserList:
                 else:
                     self.users = {}
                     self.clubs = set()
-            print(f"Список пользователей загружен из '{filename}'.")
         except Exception as e:
             print(f"Ошибка при загрузке: {e}")

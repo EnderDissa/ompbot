@@ -6,12 +6,14 @@ import re
 from utils import check_excel, create_excel, IP
 import os
 
+from utils.Metrics import Metrics
 from utils.user_list import UserList
 
 
 def process_message_event(event, vk_helper):
     pl = event.object.get('payload')
     user_list = UserList()
+    metrics = Metrics()
     if pl:
         conversation_message_id = event.object['conversation_message_id']
         peer_id = event.object['peer_id']
@@ -61,6 +63,8 @@ def process_message_event(event, vk_helper):
             keyboard = vk_helper.create_keyboard(buttons)
             vk_helper.edit_keyboard(peer_id, conversation_message_id, keyboard)
 
+            metrics.record_saved
+
         elif type == "annul":
             by_admin = pl['byAdmin']
             managerflag = " МЕНЕДЖЕРОМ" if by_admin else ""
@@ -101,6 +105,8 @@ def process_message_new(event, vk_helper, ignored):
     admin = [297002785]
     user_list = UserList()
     user_list.load_from_file()
+    metrics= Metrics()
+
 
     time = int(str(date.now().time())[:2])
     weekday = date.today().weekday()
@@ -128,6 +134,7 @@ def process_message_new(event, vk_helper, ignored):
                "ситуация срочная, пишите \"МЕНЕДЖЕР\"\n\n"
 
     uid = event.message.from_id
+    metrics.record_message(uid)
     peer_id = 2000000000 + uid
     msgraw = event.message.text
     msg = event.message.text.lower()
@@ -142,6 +149,7 @@ def process_message_new(event, vk_helper, ignored):
             return
 
     if "менеджер" in msg or "админ" in msg:
+        metrics.record_manager(uid)
         link = f"https://vk.com/gim{groupid}?sel={uid}"
         buttons = [{"label": "прямая ссылка", "payload": {"type": "userlink"}, "link": link}]
         link_keyboard = vk_helper.create_link_keyboard(buttons)

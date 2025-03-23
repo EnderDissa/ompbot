@@ -63,7 +63,7 @@ def process_message_event(event, vk_helper):
             keyboard = vk_helper.create_keyboard(buttons)
             vk_helper.edit_keyboard(peer_id, conversation_message_id, keyboard)
 
-            metrics.record_saved
+            metrics.record_memo_approved(sender)
 
         elif type == "annul":
             by_admin = pl['byAdmin']
@@ -207,6 +207,12 @@ def process_message_new(event, vk_helper, ignored):
             if uid in admin:
                 if msgs[0] == "stop":
                     exit()
+                elif msgs[0]=="stat":
+                    tts=metrics.get_report()
+                    return[{
+                        "peer_id": uid,
+                        "message": tts,
+                    }]
                 elif msgs[0] == "sender":
                     sender_type = msgs[1]
                     text = msgraw[msgraw.find("\n"):]

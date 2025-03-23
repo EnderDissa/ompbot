@@ -8,7 +8,9 @@ class Metrics:
             "memo_received": 0,
             "memo_approved": 0,
             "memo_filtered": 0,
+            "message": 0,
             "errors": 0,
+            "manager": 0,
             "history": []
         }
         self.filename = "metrics.yaml"
@@ -22,6 +24,7 @@ class Metrics:
             "event": "memo_received",
             "trigger": trigger
         })
+        self.save_to_file()
 
     def record_memo_approved(self, trigger):
         self.data["memo_approved"] += 1
@@ -30,6 +33,7 @@ class Metrics:
             "event": "memo_approved",
             "trigger": trigger
         })
+        self.save_to_file()
 
     def record_memo_filtered(self, trigger):
         self.data["memo_filtered"] += 1
@@ -38,6 +42,7 @@ class Metrics:
             "event": "memo_filtered",
             "trigger": trigger
         })
+        self.save_to_file()
 
     def record_message(self, trigger):
         self.data["message"] += 1
@@ -46,6 +51,7 @@ class Metrics:
             "event": "message",
             "trigger": trigger
         })
+        self.save_to_file()
 
     def record_error(self, trigger):
         self.data["error"] += 1
@@ -54,6 +60,8 @@ class Metrics:
             "event": "error",
             "trigger": trigger
         })
+        self.save_to_file()
+
     def record_manager(self, trigger):
         self.data["manager"] += 1
         self.data["history"].append({
@@ -61,11 +69,21 @@ class Metrics:
             "event": "manager",
             "trigger": trigger
         })
+        self.save_to_file()
 
     def save_to_file(self):
         try:
+            data_ordered = {
+                "memo_received": self.data.get("memo_received", 0),
+                "memo_approved": self.data.get("memo_approved", 0),
+                "memo_filtered": self.data.get("memo_filtered", 0),
+                "message": self.data.get("message", 0),
+                "manager": self.data.get("manager", 0),
+                "errors": self.data.get("errors", 0),
+                "history": self.data.get("history", [])
+            }
             with open(self.filename, "w", encoding="utf-8") as file:
-                yaml.dump(self.data, file, allow_unicode=True)
+                yaml.dump(data_ordered, file, allow_unicode=True)
         except Exception as e:
             print(f"Ошибка при сохранении метрик: {e}")
 
@@ -77,20 +95,26 @@ class Metrics:
                     self.data = loaded
                 else:
                     self.data = {
-                        "received": 0,
-                        "approved": 0,
-                        "filtered": 0,
+                        "memo_received": 0,
+                        "memo_approved": 0,
+                        "memo_filtered": 0,
+                        "message": 0,
                         "errors": 0,
+                        "manager": 0,
                         "history": []
                     }
+                    self.save_to_file()
         except Exception as e:
             print(f"Ошибка при загрузке метрик: {e}")
 
     def get_report(self):
         report = (
-            f"Общее количество полученных записей: {self.data.get('received', 0)}\n"
-            f"Сохранено записей: {self.data.get('saved', 0)}\n"
-            f"Отфильтровано записей: {self.data.get('filtered', 0)}\n"
+            f"Всего сообщений: {self.data.get('message', 0)}\n"
             f"Ошибок при обработке: {self.data.get('errors', 0)}\n"
+            f"Помощь менеджера понадобилась: {self.data.get('manager', 0)}\n"
+            "\n"
+            f"Поступило служебок: {self.data.get('received', 0)}\n"
+            f"Одобрено служебок: {self.data.get('approved', 0)}\n"
+            f"Отфильтровано служебок: {self.data.get('filtered', 0)}\n"
         )
         return report

@@ -18,6 +18,7 @@ class Main:
         self.info, self.error = log()
         self.longpoll = VkBotLongPoll(self.vk_session, self.group_id)
         self.ignored = IgnoredList()
+        self.metrics = Metrics()
         self.info(self.ignored.load_from_file())
         self.info("готов!\n")
 
@@ -29,6 +30,7 @@ class Main:
             except Exception as e:
                 self.error(e)
                 traceback.print_exc()
+
 
     def process_event(self, event):
         if event.type == VkBotEventType.MESSAGE_NEW:

@@ -169,6 +169,7 @@ def process_message_new(event, vk_helper, ignored):
             Сtts = f"{uname} {usurname} вызывает!"
             buttons = [{"label": "СПАСИБО МЕНЕДЖЕР", "payload": {"type": "uncallmanager"}, "color": "negative"}]
             keyboard = vk_helper.create_standart_keyboard(buttons)
+            metrics.record_message(uid)
         return [
             {
                 "peer_id": uid,
@@ -341,6 +342,7 @@ def process_message_new(event, vk_helper, ignored):
                 tts += "неопознанная ошибка, позовите менеджера: " + str(check[1])
             else:
                 tts += "ошибка в ячейке " + check
+        metrics.record_memo_filtered()
         return [{
             "peer_id": uid,
             "message": tts,

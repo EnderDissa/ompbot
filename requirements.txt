@@ -1,4 +1,4 @@
 openpyxl>=3.1.5
 requests>=2.32.3
-
+pyyaml
 loguru>=0.7.3

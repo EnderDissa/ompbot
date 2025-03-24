@@ -342,7 +342,7 @@ def process_message_new(event, vk_helper, ignored):
                 tts += "неопознанная ошибка, позовите менеджера: " + str(check[1])
             else:
                 tts += "ошибка в ячейке " + check
-        metrics.record_memo_filtered()
+        metrics.record_memo_filtered(uid)
         return [{
             "peer_id": uid,
             "message": tts,

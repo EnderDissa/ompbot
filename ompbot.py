@@ -322,7 +322,7 @@ def process_message_new(event, vk_helper, ignored):
                         tts += "ошибка в ячейке " + check
                     metrics.record_memo_filtered(uid)
                 elif attachment_ext=='docx':
-                    newname = "СЗ_" + attachment_title[:attachment_title.find(".")]
+                    newname = "СЗ_" + attachment_title[:attachment_title.find(".")]+"_" + "_".join(str(date.now())[:-7].replace(":", "-").split())
                     newpath = "docx\\" + newname + ".docx"
                     for _ in range(1, 999):
                         if os.path.exists(newpath):

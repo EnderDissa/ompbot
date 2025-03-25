@@ -54,7 +54,7 @@ class Metrics:
         self.save_to_file()
 
     def record_error(self, trigger):
-        self.data["error"] += 1
+        self.data["errors"] += 1
         self.data["history"].append({
             "timestamp": datetime.now().isoformat(),
             "event": "error",

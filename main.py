@@ -12,6 +12,7 @@ class Main:
     def __init__(self):
         self.token = initialize()
         self.group_id = 228288169
+
         self.vk_session = vk_api.VkApi(token=self.token)
         self.VK = VKHelper(self.vk_session)
 
@@ -30,6 +31,7 @@ class Main:
             except Exception as e:
                 self.error(e)
                 traceback.print_exc()
+                self.metrics.record_error(str(e))
 
 
     def process_event(self, event):

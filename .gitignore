@@ -4,3 +4,4 @@ ignored.txt
 *.xlsx
 *.log
 *.yml
+*.yaml

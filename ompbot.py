@@ -5,10 +5,15 @@ from datetime import datetime as date
 import re
 from utils import check_excel, create_excel, IP
 import os
+import shutil
 
 from utils.Metrics import Metrics
 from utils.user_list import UserList
 
+global  admin_chat, admins, groupid
+admin_chat = 2
+admins = [297002785]
+groupid = 228288169
 
 def process_message_event(event, vk_helper):
     pl = event.object.get('payload')
@@ -23,10 +28,12 @@ def process_message_event(event, vk_helper):
         if type in ['send','approve', 'annul']:
             title = pl['title']
             tts = "Ваша служебная записка " + title
-        else: tts=""
+        else:
+            tts=""
+            title = None
 
         if type == "send":
-            tts += "\n принята и отправлена на согласование!"
+            tts += "\nпринята и отправлена на согласование!"
             buttons = [
                 {
                     "label": "ОТПРАВЛЕНО",
@@ -101,8 +108,8 @@ def process_message_event(event, vk_helper):
 def process_message_new(event, vk_helper, ignored):
     tts = ''
     yonote = 'https://ursi.yonote.ru/share/clubs/doc/sluzhebnye-zapiski-i-prohod-gostej-bihQHvmk8w'
-    groupid = 228288169
-    admin = [297002785]
+
+
     user_list = UserList()
     user_list.load_from_file()
     metrics= Metrics()
@@ -144,46 +151,6 @@ def process_message_new(event, vk_helper, ignored):
     user_get = user_get[0]
     uname = user_get['first_name']
     usurname = user_get['last_name']
-    if ignored.is_ignored(uid):
-        if not ("менеджер" in msg or "админ" in msg):
-            return
-
-    if "менеджер" in msg or "админ" in msg:
-        metrics.record_manager(uid)
-        link = f"https://vk.com/gim{groupid}?sel={uid}"
-        buttons = [{"label": "прямая ссылка", "payload": {"type": "userlink"}, "link": link}]
-        link_keyboard = vk_helper.create_link_keyboard(buttons)
-        if ignored.is_ignored(uid):
-            ignored.remove(uid)
-            ignored.save_to_file()
-            tts = "Надеюсь, вопрос снят!"
-            Сtts = f"{uname} {usurname} больше не вызывает!"
-            buttons = [{"label": "ПОЗВАТЬ МЕНЕДЖЕРА", "payload": {"type": "callmanager"}, "color": "positive"}]
-            keyboard = vk_helper.create_standart_keyboard(buttons)
-
-        else:
-            ignored.add(uid)
-            ignored.save_to_file()
-            tts = "Принято, сейчас позову! Напиши свою проблему следующим сообщением. " \
-                  "Когда вопрос будет решён, ещё раз напиши команду или нажми на кнопку."
-            Сtts = f"{uname} {usurname} вызывает!"
-            buttons = [{"label": "СПАСИБО МЕНЕДЖЕР", "payload": {"type": "uncallmanager"}, "color": "negative"}]
-            keyboard = vk_helper.create_standart_keyboard(buttons)
-            metrics.record_message(uid)
-        return [
-            {
-                "peer_id": uid,
-                "message": tts,
-                "keyboard": keyboard,
-                "attachment": None
-            },
-            {
-                "peer_id": 2000000000 + 1,
-                "message": Сtts,
-                "keyboard": link_keyboard,
-                "attachment": None
-            }
-        ]
 
     if event.from_chat:
         id = event.chat_id
@@ -192,6 +159,47 @@ def process_message_new(event, vk_helper, ignored):
         return
 
     else:
+        if ignored.is_ignored(uid):
+            if not ("менеджер" in msg or "админ" in msg):
+                return
+
+        if "менеджер" in msg or "админ" in msg:
+            metrics.record_manager(uid)
+            link = f"https://vk.com/gim{groupid}?sel={uid}"
+            buttons = [{"label": "прямая ссылка", "payload": {"type": "userlink"}, "link": link}]
+            link_keyboard = vk_helper.create_link_keyboard(buttons)
+            if ignored.is_ignored(uid):
+                ignored.remove(uid)
+                ignored.save_to_file()
+                tts = "Надеюсь, вопрос снят!"
+                Сtts = f"{uname} {usurname} больше не вызывает!"
+                buttons = [{"label": "ПОЗВАТЬ МЕНЕДЖЕРА", "payload": {"type": "callmanager"}, "color": "positive"}]
+                keyboard = vk_helper.create_standart_keyboard(buttons)
+
+            else:
+                ignored.add(uid)
+                ignored.save_to_file()
+                tts = "Принято, сейчас позову! Напиши свою проблему следующим сообщением. " \
+                      "Когда вопрос будет решён, ещё раз напиши команду или нажми на кнопку."
+                Сtts = f"{uname} {usurname} вызывает!"
+                buttons = [{"label": "СПАСИБО МЕНЕДЖЕР", "payload": {"type": "uncallmanager"}, "color": "negative"}]
+                keyboard = vk_helper.create_standart_keyboard(buttons)
+                metrics.record_message(uid)
+            return [
+                {
+                    "peer_id": uid,
+                    "message": tts,
+                    "keyboard": keyboard,
+                    "attachment": None
+                },
+                {
+                    "peer_id": 2000000000 + admin_chat,
+                    "message": Сtts,
+                    "keyboard": link_keyboard,
+                    "attachment": None
+                }
+            ]
+
         attachment = event.object.message['attachments']
         if not attachment:
             if vk_helper.vk_session.method('groups.isMember', {'group_id': groupid, 'user_id': uid}) == 0:
@@ -205,7 +213,7 @@ def process_message_new(event, vk_helper, ignored):
                        "пиши \"МЕНЕДЖЕР\"\nP.S. обязательно отправляй служебные записки в формате, указанном в " \
                        "yonote: " + yonote
         if msgs:
-            if uid in admin:
+            if uid in admins:
                 if msgs[0] == "stop":
                     exit()
                 elif msgs[0]=="stat":
@@ -232,11 +240,12 @@ def process_message_new(event, vk_helper, ignored):
             attachment = attachment['doc'] if attachment['type'] == 'doc' else None
             attachment_title = attachment['title']
             attachment_ext = attachment['ext']
+
             attachment_url = attachment['url']
             if (not (re.match(r'СЗ_[а-яёА-ЯЁa-zA-Z]+\.', attachment_title))) or (
-                    "шаблон" in attachment_title and uid not in admin):
+                    "шаблон" in attachment_title and uid not in admins):
                 tts += "ошибка в названии файла. пример:\nСЗ_шаблон.xlsx\nдопускается:\nСЗ_шаблон.метаинф.xlsx\n" \
-                       "Вместо \"шаблон\" везде название клуба (без пробелов, лучше латиницей)."
+                       "Вместо \"шаблон\" везде одинаковое название клуба (без пробелов, лучше латиницей)."
                 return [{
                     "peer_id": uid,
                     "message": tts,
@@ -246,7 +255,7 @@ def process_message_new(event, vk_helper, ignored):
 
 
             if club_name not in user_list.get_clubs(uid):
-                tts+=f"Вы хотите связать свой аккаунт с клубом «{club_name}». Обратите внимание, если до этого уже связывали аккаунт с клубом, но сейчас написали другое название в СЗ, отправьте корректную записку или вызовите менеджера. Используйте одно название для всех СЗ_название.\nНажимая кнопку ПОДТВЕРДИТЬ и продолжая пользоваться сервисом вы соглашаетесь с правилами пользования сервисом и подтверждаете, что:\n1) данные в записках корректны и принадлежат реальным людям.\n2) знаете: клубы обязаны следить за своими гостями на территории университета, в частности не допускать их самостоятельного нахождения на территории вне мероприятия.\n3) ознакомлены с графиком работы бота: пн-чт 10:00-17:00, пт 10:00-16:00. В остальное время записки не обрабатываются, так как не работает ни УФБ, ни ОМП. За редким исключением, вашу служебную записку будет некому обработать (при этом отправлять заранее можно и нужно)\n5) знаете, где взять информацию о формате СЗ и командах бота: https://ursi.yonote.ru/share/clubs/doc/sluzhebnye-zapiski-i-prohod-gostej-bihQHvmk8w. \n\nВ случае нарушений этих простых правил, клубу может быть полностью ограничен доступ к сервису."
+                tts+=f"Вы хотите связать свой аккаунт с клубом «{club_name}». В дальнейшем используйте одно название для всех СЗ_название от одного клуба.\n\nНажимая кнопку ПОДТВЕРДИТЬ и продолжая пользоваться сервисом вы соглашаетесь с правилами пользования и подтверждаете, что:\n1) данные в записках корректны и принадлежат реальным людям;\n2) знаете, что клубы обязаны следить за своими гостями на территории университета, в частности не допускать их самостоятельного нахождения на территории вне мероприятия;\n3) ознакомлены с графиком работы бота: пн-чт 10:00-17:00, пт 10:00-16:00. В остальное время записки не обрабатываются, так как не работает ни УФБ, ни ОМП;\n4) знаете, где взять информацию о формате СЗ и командах бота: https://ursi.yonote.ru/share/clubs/doc/sluzhebnye-zapiski-i-prohod-gostej-bihQHvmk8w. \n\nВ случае нарушений этих простых правил, клубу может быть полностью ограничен доступ к сервису."
                 buttons = [
                     {"label": "ПОДТВЕРДИТЬ", "payload": {"type": "club",'sender': uid, "status":"accept","club":club_name}, "color": "positive"},
                     {"label": "ОТМЕНИТЬ", "payload": {"type": "club",'sender': uid,"status":"decline","club":club_name}, "color": "negative"}
@@ -258,58 +267,97 @@ def process_message_new(event, vk_helper, ignored):
                         "keyboard": keyboard
                     }]
 
-            path = IP.attachment_extract(attachment_url, attachment_title)
+            path = IP.attachment_extract(attachment_url, attachment_title, attachment_ext)
+            if attachment_ext in ['xlsx', 'docx']:
+                metrics.record_memo_received(uid)
+                if attachment_ext == 'xlsx':
+                    try:
+                        check = check_excel(path)
+                    except Exception as exc:
+                        check = ["ER", exc]
+                    if check[0] == "success":
+                        rows = check[1]
+                        kolgost = int(float(rows[-1][0]))
+                        korpus = rows[0][1]
+                        data = rows[0][3]
+                        merotitle = rows[0][5]
+                        org = rows[1][7]
+                        orgnomer = str(rows[2][7])
 
-            try:
-                check = check_excel(path)
-            except Exception as exc:
-                check = ["ER", exc]
-            if check[0] == "success":
-                rows = check[1]
-                kolgost = int(float(rows[-1][0]))
-                korpus = rows[0][1]
-                data = rows[0][3]
-                merotitle = rows[0][5]
-                org = rows[1][7]
-                orgnomer = str(rows[2][7])
+                        newname = "СЗ_" + attachment_title[:attachment_title.find(".")] + "_"+korpus[0]+korpus[-1]+"_" + "_".join(
+                            rows[0][3].replace(":", "-").replace(".", "-").split())
+                        newpath = "xlsx\\" + newname + ".xlsx"
+                        for _ in range(1, 999):
+                            if os.path.exists(newpath):
+                                base_name = newname[:newname.rfind("(")] if "(" in newname else newname
+                                newname = f"{base_name}({_})"
+                                newpath = "xlsx\\" + newname + ".xlsx"
+                            else:
+                                break
 
-                newname = "СЗ_" + attachment_title[:attachment_title.find(".")] + "_"+korpus[0]+korpus[-1]+"_" + "_".join(
-                    rows[0][3].replace(":", "-").replace(".", "-").split())
-                newpath = "xlsx\\" + newname + ".xlsx"
-                if os.path.exists(newpath):
-                    newname+="(1)"
-                    newpath = "xlsx\\" + newname + ".xlsx"
+                        create_excel(newpath, rows)
 
-                create_excel(newpath, rows)
-
-                result = json.loads(requests.post(
-                    vk_helper.vk.docs.getMessagesUploadServer(type='doc',
-                                                              peer_id=event.object.message['peer_id'])[
-                        'upload_url'],
-                    files={'file': open(newpath, 'rb')}).text)
-                jsonAnswer = vk_helper.vk.docs.save(file=result['file'], title=newname, tags=[])
-                attachment = f"doc{jsonAnswer['doc']['owner_id']}_{jsonAnswer['doc']['id']}"
+                        result = json.loads(requests.post(
+                            vk_helper.vk.docs.getMessagesUploadServer(type='doc',
+                                                                      peer_id=event.object.message['peer_id'])[
+                                'upload_url'],
+                            files={'file': open(newpath, 'rb')}).text)
+                        jsonAnswer = vk_helper.vk.docs.save(file=result['file'], title=newname, tags=[])
+                        attachment = f"doc{jsonAnswer['doc']['owner_id']}_{jsonAnswer['doc']['id']}"
 
 
-                tts += f"Принято! Отправил на проверку, ожидайте ответа.\nПроверьте данные. В случае несовпадений, вызовите менеджера: \nДата: {data}\nорганизатор: {org} (+{orgnomer})" \
-                       f"\nНазвание мероприятия: {merotitle}\nКорпус: {korpus} \nКоличество гостей:  {kolgost}"
-                Сtts = f"новая проходка: vk.com/gim{groupid}?sel={uid}\nдата: {data}\nорганизатор: {org} (+{orgnomer})" \
-                       f"\nколичество гостей:  {kolgost}\nназвание мероприятия: {merotitle}\nкорпус: {korpus} \nотправитель: {uname} {usurname}"
-                newpath = newpath[5:]
+                        tts += f"Принято! Отправил на проверку, ожидайте ответа.\nПроверьте данные. В случае несовпадений, вызовите менеджера: \nДата: {data}\nорганизатор: {org} (+{orgnomer})" \
+                               f"\nНазвание мероприятия: {merotitle}\nКорпус: {korpus} \nКоличество гостей:  {kolgost}"
+                        Сtts = f"новая проходка: vk.com/gim{groupid}?sel={uid}\nдата: {data}\nорганизатор: {org} (+{orgnomer})" \
+                               f"\nколичество гостей:  {kolgost}\nназвание мероприятия: {merotitle}\nкорпус: {korpus} \nотправитель: {uname} {usurname}"
+                        newname = newpath[5:]
+                    elif check[0] == "00":
+                        tts += "ошибка в одной из ячеек, которые нельзя менять." \
+                               " перепроверьте A1, A2, B2, C1, C2, D2, E1, E2, F2, G1, G2, G3, H1 по шаблону"
+                    elif check[0] == "01":
+                        tts += "ошибка в одной из ячеек, которые необходимо было изменить. поменяйте шаблон!"
+                    elif check[0] == "ER":
+                        tts += "неопознанная ошибка, позовите менеджера: " + str(check[1])
+                    else:
+                        tts += "ошибка в ячейке " + check
+                    metrics.record_memo_filtered(uid)
+                elif attachment_ext=='docx':
+                    newname = "СЗ_" + attachment_title[:attachment_title.find(".")]
+                    newpath = "docx\\" + newname + ".docx"
+                    for _ in range(1, 999):
+                        if os.path.exists(newpath):
+                            base_name = newname[:newname.rfind("(")] if "(" in newname else newname
+                            newname = f"{base_name}({_})"
+                            newpath = "docx\\" + newname + ".docx"
+                        else: break
+                    shutil.copy(path, newpath)
+                    result = json.loads(requests.post(
+                        vk_helper.vk.docs.getMessagesUploadServer(type='doc',
+                                                                  peer_id=event.object.message['peer_id'])[
+                            'upload_url'],
+                        files={'file': open(newpath, 'rb')}).text)
+                    jsonAnswer = vk_helper.vk.docs.save(file=result['file'], title=newname, tags=[])
+                    attachment = f"doc{jsonAnswer['doc']['owner_id']}_{jsonAnswer['doc']['id']}"
+
+                    tts += f"Принято! Отправил на проверку, ожидайте ответа.\n"
+                    Сtts = f"новая проходка: vk.com/gim{groupid}?sel={uid}\nотправитель: {uname} {usurname}"
+                    newname = newname+".docx"
+                else:
+                    pass
                 buttons = [
                     {
                         "label": "ОТПРАВИТЬ",
-                        "payload": {"type": "send", 'sender': uid, 'title': newpath},
+                        "payload": {"type": "send", 'sender': uid, 'title': newname},
                         "color": "primary"
                     },
                     {
                         "label": "СОГЛАСОВАТЬ",
-                        "payload": {"type": "approve", 'sender': uid, 'title': newpath, 'isSended': False},
+                        "payload": {"type": "approve", 'sender': uid, 'title': newname, 'isSended': False},
                         "color": "primary"
                     },
                     {
                         "label": "АННУЛИРОВАТЬ",
-                        "payload": {"type": "annul", 'sender': uid, 'title': newpath, 'byAdmin': True},
+                        "payload": {"type": "annul", 'sender': uid, 'title': newname, 'byAdmin': True},
                         "color": "negative",
                         "newline": True
                     }
@@ -327,22 +375,13 @@ def process_message_new(event, vk_helper, ignored):
                         "attachment": attachment
                     },
                     {
-                        "peer_id": 2000000000 + 1,
+                        "peer_id": 2000000000 + admin_chat,
                         "message": Сtts,
                         "keyboard": Ckeyboard,
                         "attachment": attachment
                     }
                 ]
-            elif check[0] == "00":
-                tts += "ошибка в одной из ячеек, которые нельзя менять." \
-                       " перепроверьте A1, A2, B2, C1, C2, D2, E1, E2, F2, G1, G2, G3, H1 по шаблону"
-            elif check[0] == "01":
-                tts += "ошибка в одной из ячеек, которые необходимо было изменить. поменяйте шаблон!"
-            elif check[0] == "ER":
-                tts += "неопознанная ошибка, позовите менеджера: " + str(check[1])
-            else:
-                tts += "ошибка в ячейке " + check
-        metrics.record_memo_filtered()
+
         return [{
             "peer_id": uid,
             "message": tts,

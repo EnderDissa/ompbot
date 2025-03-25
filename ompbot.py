@@ -11,7 +11,7 @@ from utils.Metrics import Metrics
 from utils.user_list import UserList
 
 global  admin_chat, admins, groupid
-admin_chat = 2
+admin_chat = 1
 admins = [297002785]
 groupid = 228288169
 

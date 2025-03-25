@@ -113,8 +113,8 @@ class Metrics:
             f"Ошибок при обработке: {self.data.get('errors', 0)}\n"
             f"Помощь менеджера понадобилась: {self.data.get('manager', 0)}\n"
             "\n"
-            f"Поступило служебок: {self.data.get('received', 0)}\n"
-            f"Одобрено служебок: {self.data.get('approved', 0)}\n"
-            f"Отфильтровано служебок: {self.data.get('filtered', 0)}\n"
+            f"Поступило служебок: {self.data.get('memo_received', 0)}\n"
+            f"Одобрено служебок: {self.data.get('memo_approved', 0)}\n"
+            f"Отфильтровано служебок: {self.data.get('memo_filtered', 0)}\n"
         )
         return report

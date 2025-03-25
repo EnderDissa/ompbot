@@ -12,7 +12,7 @@ from utils.user_list import UserList
 
 global  admin_chat, admins, groupid
 admin_chat = 1
-admins = [297002785]
+admins = [297002785, 101822925]
 groupid = 228288169
 
 def process_message_event(event, vk_helper):

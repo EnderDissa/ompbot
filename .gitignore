@@ -1,7 +1,8 @@
- .idea
+.idea/*
 token.txt
 ignored.txt
 *.xlsx
+*.docx
 *.log
 *.yml
 *.yaml

@@ -16,8 +16,8 @@ jobs:
           PORT: 22
           PRIVATE_KEY: ${{ secrets.BOT_DEV_SSH_PRIVATE_KEY }}
           CMD: |
-            cd /srv/bots/vk-ompbot/app/ompbot
+            cd /srv/bots/vk-ompbot/app/ompbot;
             git reset --hard HEAD;
             git pull;
-            cd /srv/bots/vk-ompbot
+            cd /srv/bots/vk-ompbot;
             docker compose up -d --build --force-recreate;

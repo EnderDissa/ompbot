@@ -1,0 +1,23 @@
+name: Deploy on Push
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Execute SSH Commands
+        uses: GPTED/SSH-My-Action@0.1
+        with:
+          HOST: 45.93.200.157
+          USER: bot_dev
+          PORT: 22
+          PRIVATE_KEY: ${{ secrets.BOT_DEV_SSH_PRIVATE_KEY }}
+          CMD: |
+            cd /srv/bots/vk-ompbot/app
+            git reset --hard HEAD;
+            git pull;
+            cd /srv/bots/vk-ompbot
+            docker compose up -d --build --force-recreate;

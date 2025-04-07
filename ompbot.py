@@ -311,16 +311,21 @@ def process_message_new(event, vk_helper, ignored):
                         Сtts = f"новая проходка: vk.com/gim{groupid}?sel={uid}\nдата: {data}\nорганизатор: {org} (+{orgnomer})" \
                                f"\nколичество гостей:  {kolgost}\nназвание мероприятия: {merotitle}\nкорпус: {korpus} \nотправитель: {uname} {usurname}"
                         newname = newpath[5:]
-                    elif check[0] == "00":
-                        tts += "ошибка в одной из ячеек, которые нельзя менять." \
-                               " перепроверьте A1, A2, B2, C1, C2, D2, E1, E2, F2, G1, G2, G3, H1 по шаблону"
-                    elif check[0] == "01":
-                        tts += "ошибка в одной из ячеек, которые необходимо было изменить. поменяйте шаблон!"
-                    elif check[0] == "ER":
-                        tts += "неопознанная ошибка, позовите менеджера: " + str(check[1])
                     else:
-                        tts += "ошибка в ячейке " + check
-                    metrics.record_memo_filtered(uid)
+                        if check[0] == "00":
+                            tts += "ошибка в одной из ячеек, которые нельзя менять." \
+                                " перепроверьте A1, A2, B2, C1, C2, D2, E1, E2, F2, G1, G2, G3, H1 по шаблону"
+                        elif check[0] == "01":
+                            tts += "ошибка в одной из ячеек, которые необходимо было изменить. поменяйте шаблон!"
+                        elif check[0] == "ER":
+                            tts += "неопознанная ошибка, позовите менеджера: " + str(check[1])
+                        else:
+                            tts += "ошибка в ячейке " + check
+                        metrics.record_memo_filtered(uid)
+                        return [{
+                            "peer_id": uid,
+                            "message": tts,
+                        }]
                 elif attachment_ext=='docx':
                     newname = "СЗ_" + attachment_title[:attachment_title.find(".")]+"_" + "_".join(str(date.now())[:-7].replace(":", "-").split())
                     newpath = "docx\\" + newname + ".docx"

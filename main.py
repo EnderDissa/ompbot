@@ -23,6 +23,8 @@ class Main:
         self.info(self.ignored.load_from_file())
         self.info("готов!\n")
 
+        #handle_actions(self, actions)
+
     def run(self):
         while True:
             try:

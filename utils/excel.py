@@ -23,7 +23,7 @@ def check_excel(path):
     correct_meta_otv = ['Калугина Анна Владимировна, ведущий менеджер ОМП', 79514373833]
 
     date_str = date_time.split()[0]
-    now = str(date.today())
+    now = date.today()
     if correct_meta == meta:
         if date_time == "01.01.2025  09:00-23:00" or "Шаблон" in name or "Шаблон" in rukovod or rukovod_phone == 79633336075 or rukovod_phone == "79633336075":
             return "01", rows

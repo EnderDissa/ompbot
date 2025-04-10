@@ -1,7 +1,7 @@
 import re
 import openpyxl
 from openpyxl.styles import PatternFill, Side, Border
-from datetime import datetime as datet
+from datetime import datetime, date 
 
 
 def check_excel(path):
@@ -22,12 +22,12 @@ def check_excel(path):
 
     correct_meta_otv = ['Калугина Анна Владимировна, ведущий менеджер ОМП', 79514373833]
 
-    date = date_time.split()[0]
-    now = str(datet.now())
+    date_str = date_time.split()[0]
+    now = str(date.now())
     if correct_meta == meta:
         if date_time == "01.01.2025  09:00-23:00" or "Шаблон" in name or "Шаблон" in rukovod or rukovod_phone == 79633336075 or rukovod_phone == "79633336075":
             return "01", rows
-        datetime = datetime.strptime(date_time.split(), "%d.%m.%Y").date()
+        date_time = datetime.strptime(date_time.split(), "%d.%m.%Y").date()
         if date_time < now:
             return "02", rows
         i = 0

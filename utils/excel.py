@@ -22,11 +22,14 @@ def check_excel(path):
     correct_meta_otv = ['Калугина Анна Владимировна, ведущий менеджер ОМП', 79514373833]
 
     date = date_time.split()[0]
-
+    now = str(date.now())
     if correct_meta == meta:
         if date_time == "01.01.2025  09:00-23:00" or "Шаблон" in name or "Шаблон" in rukovod or rukovod_phone == 79633336075 or rukovod_phone == "79633336075":
             return "01", rows
-        i = 0;
+        datetime = datetime.strptime(date_time.split(), "%d.%m.%Y").date()
+        if date_time < now:
+            return "02", rows
+        i = 0
         j = 0
         cyrillic_lower_letters = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя- '
         while True:
@@ -39,19 +42,22 @@ def check_excel(path):
             col = str(i)
             if sheet['A' + col].value is None: break
             row = [sheet['A' + col].value, sheet['B' + col].value.strip(), sheet['C' + col].value.strip(),
-                   str(sheet['D' + col].value).strip(), str(sheet['E' + col].value).replace(" ", "").zfill(10),
+                   str(sheet['D' + col].value).strip(), (str(sheet['E' + col].value).replace(" ", "").zfill(10) if i>3 else str(sheet['E' + col].value)),
                    str(sheet['F' + col].value).strip(), sheet['G' + col].value, sheet['H' + col].value]
 
             if i < 3:
-                if i == 2: row[6] = correct_meta_otv[0]
+                #if i == 2: row[6] = correct_meta_otv[0]
                 rows.append(row)
                 continue
+
             if i == 3:
 
                 digits = re.findall(r"7\d{10}", str(int(float(row[6]))))[0]
-                row[6] = correct_meta_otv[1]
+                # row[6] = correct_meta_otv[1]
                 digits = re.findall(r"7\d{10}", str(int(float(row[7]))))[0]
                 row[7] = digits
+
+
             if row[0] != i - 2: return "A" + col
             for _ in row[1].lower():
                 if _ not in cyrillic_lower_letters: return "B" + col

@@ -20,7 +20,8 @@ def check_excel(path):
     rukovod = sheet['H2'].value
     rukovod_phone = sheet['H3'].value
 
-    correct_meta_otv = ['Калугина Анна Владимировна, ведущий менеджер ОМП', 79514373833]
+    correct_meta_otv = ['Романова Софья Александровна, директор ОМП', 79650431766]
+    #correct_meta_otv = ['Калугина Анна Владимировна, ведущий менеджер ОМП', 79514373833]
 
     date_str = date_time.split()[0]
     now = date.today()
@@ -47,7 +48,7 @@ def check_excel(path):
                    str(sheet['F' + col].value).strip(), sheet['G' + col].value, sheet['H' + col].value]
 
             if i < 3:
-                #if i == 2: row[6] = correct_meta_otv[0]
+                if i == 2: row[6] = correct_meta_otv[0]
                 rows.append(row)
                 continue
 

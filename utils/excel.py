@@ -55,7 +55,7 @@ def check_excel(path):
             if i == 3:
 
                 digits = re.findall(r"7\d{10}", str(int(float(row[6]))))[0]
-                # row[6] = correct_meta_otv[1]
+                row[6] = correct_meta_otv[1]
                 digits = re.findall(r"7\d{10}", str(int(float(row[7]))))[0]
                 row[7] = digits
 

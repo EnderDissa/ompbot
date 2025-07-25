@@ -3,11 +3,12 @@ import json
 import requests
 from datetime import datetime as date
 import re
-from utils import check_excel, create_excel, IP
+from utils import check_excel, create_excel, net_helper, mail_helper
 import os
 import shutil
 
-from utils.Metrics import Metrics
+from utils.mail_helper import MailHelper
+from utils.metrics import Metrics
 from utils.user_list import UserList
 
 global  admin_chat, admins, groupid
@@ -25,14 +26,35 @@ def process_message_event(event, vk_helper):
 
         type = pl['type']
         sender = int(pl['sender'])
-        if type in ['send','approve', 'annul']:
+        if type in ['auto', 'send','approve', 'annul']:
             title = pl['title']
             tts = "Ваша служебная записка " + title
         else:
             tts=""
             title = None
 
-        if type == "send":
+        if type=='auto':
+            tts += "\nпринята и отправлена на согласование!"
+            buttons = [
+                {
+                    "label": "ОТПРАВЛЕНО",
+                    "payload": {"type": "sended", "sender": sender, "title": title},
+                    "color": "positive"
+                },
+                {
+                    "label": "СОГЛАСОВАТЬ",
+                    "payload": {"type": "approve", "sender": sender, "title": title, "isSended": True},
+                    "color": "primary"
+                }
+            ]
+            keyboard = vk_helper.create_keyboard(buttons)
+            vk_helper.edit_keyboard(peer_id, conversation_message_id, keyboard)
+
+            mail = MailHelper()
+            print(title)
+            mail.send_mail(attachments=[pl['path']])
+
+        elif type == "send":
             tts += "\nпринята и отправлена на согласование!"
             buttons = [
                 {
@@ -267,7 +289,7 @@ def process_message_new(event, vk_helper, ignored):
                         "keyboard": keyboard
                     }]
 
-            path = IP.attachment_extract(attachment_url, attachment_title, attachment_ext)
+            path = net_helper.attachment_extract(attachment_url, attachment_title, attachment_ext)
             if attachment_ext in ['xlsx', 'docx']:
                 metrics.record_memo_received(uid)
                 if attachment_ext == 'xlsx':
@@ -353,9 +375,15 @@ def process_message_new(event, vk_helper, ignored):
                     pass
                 buttons = [
                     {
+                        "label": "АВТОСОГЛАСОВАНИЕ",
+                        "payload": {"type": "auto", 'sender': uid, 'title': newname, 'path': newpath},
+                        "color": "secondary"
+                    },
+                    {
                         "label": "ОТПРАВИТЬ",
                         "payload": {"type": "send", 'sender': uid, 'title': newname},
-                        "color": "primary"
+                        "color": "primary",
+                        "newline": True
                     },
                     {
                         "label": "СОГЛАСОВАТЬ",

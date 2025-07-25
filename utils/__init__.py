@@ -1,7 +1,7 @@
 from .ignored_list import IgnoredList
-from .excel import *
+from .excel_helper import *
 from .vk_helper import *
-from .IP import *
+from .net_helper import *
 
 
 def get_secrets():

@@ -2,7 +2,7 @@
 import vk_api
 from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
 import traceback
-from utils import IgnoredList, initialize
+from utils import IgnoredList, get_secrets
 from utils import VKHelper
 from utils.log import *
 from ompbot import *
@@ -10,7 +10,7 @@ from ompbot import *
 
 class Main:
     def __init__(self):
-        self.token = initialize()
+        self.token = get_secrets()['token']
         self.group_id = 228288169
 
         self.vk_session = vk_api.VkApi(token=self.token)

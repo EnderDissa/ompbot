@@ -34,7 +34,7 @@ jobs:
         run: |
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
   build-and-push:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     needs: test
     runs-on: ubuntu-latest
     steps:

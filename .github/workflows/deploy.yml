@@ -2,8 +2,12 @@ name: Deploy on Push
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ master, dev ]
+  pull_request:
+    branches: [ master, dev ]
 
+permissions:
+  contents: read
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -29,21 +33,44 @@ jobs:
       - name: Run linter - soft style guide
         run: |
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
-
-  deploy:
-      needs: test
-      runs-on: ubuntu-latest
-      steps:
-        - name: Execute SSH Commands
-          uses: GPTED/SSH-My-Action@0.1
-          with:
-            HOST: 45.93.200.157
-            USER: bot_dev
-            PORT: 22
-            PRIVATE_KEY: ${{ secrets.BOT_DEV_SSH_PRIVATE_KEY }}
-            CMD: |
-              cd /srv/bots/vk-ompbot/app/ompbot;
-              git reset --hard HEAD;
-              git pull;
-              cd /srv/bots/vk-ompbot;
-              docker compose up -d --build --force-recreate;
+  build-and-push:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR (via PAT)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: 'enderdisss'
+          password: ${{ secrets.GHCR_PUSH_TOKEN }}
+      - name: Build & Tag
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE="ghcr.io/${OWNER}/ompbot"
+          docker build -t $IMAGE:latest -f ./Dockerfile .
+          docker tag $IMAGE:latest $IMAGE:${{ github.run_number }}
+          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+      - name: Push
+        run: |
+          docker push $IMAGE:latest
+          docker push $IMAGE:${{ github.run_number }}
+  # deploy:
+  #     needs: test
+  #     runs-on: ubuntu-latest
+  #     steps:
+  #       - name: Execute SSH Commands
+  #         uses: GPTED/SSH-My-Action@0.1
+  #         with:
+  #           HOST: 45.93.200.157
+  #           USER: bot_dev
+  #           PORT: 22
+  #           PRIVATE_KEY: ${{ secrets.BOT_DEV_SSH_PRIVATE_KEY }}
+  #           CMD: |
+  #             cd /srv/bots/vk-ompbot/app/ompbot;
+  #             git reset --hard HEAD;
+  #             git pull;
+  #             cd /srv/bots/vk-ompbot;
+  #             docker compose up -d --build --force-recreate;

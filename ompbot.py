@@ -308,12 +308,12 @@ def process_message_new(event, vk_helper, ignored):
 
                         newname = "СЗ_" + attachment_title[:attachment_title.find(".")] + "_"+korpus[0]+korpus[-1]+"_" + "_".join(
                             rows[0][3].replace(":", "-").replace(".", "-").split())
-                        newpath = "xlsx\\" + newname + ".xlsx"
+                        newpath = "xlsx/" + newname + ".xlsx"
                         for _ in range(1, 999):
                             if os.path.exists(newpath):
                                 base_name = newname[:newname.rfind("(")] if "(" in newname else newname
                                 newname = f"{base_name}({_})"
-                                newpath = "xlsx\\" + newname + ".xlsx"
+                                newpath = "xlsx/" + newname + ".xlsx"
                             else:
                                 break
 

@@ -24,7 +24,7 @@ def create():
             path.touch()
             print(f"Создан файл: {file}")
 
-    if not os.path.exists('token.txt'):
+    if not (os.path.exists('token.txt') or os.getenv("BOT_TOKEN")):
         token=getpass.getpass("введи токен приложения VK:\n")
         with open ('token.txt', 'w') as f:
             f.write(token)

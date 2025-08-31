@@ -289,7 +289,7 @@ def process_message_new(event, vk_helper, ignored):
                         "keyboard": keyboard
                     }]
 
-            path = net_helper.attachment_extract(attachment_url, attachment_title, attachment_ext)
+            path = net_helper.attachment_extract(attachment_url, club_name, attachment_ext)
             if attachment_ext in ['xlsx', 'docx']:
                 metrics.record_memo_received(uid)
                 if attachment_ext == 'xlsx':

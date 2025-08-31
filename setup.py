@@ -4,7 +4,7 @@ import getpass
 from pathlib import Path
 
 required_dirs = [
-    'data'
+    'data',
     'data/xlsx',
     'data/docx'
 ]
@@ -15,9 +15,8 @@ required_files = [
 
 def create():
     for directory in required_dirs:
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-            print(f"Создана папка: {directory}")
+        os.makedirs(directory, exist_ok=True)
+        print(f"Создана папка: {directory}")
     for file in required_files:
         path = Path(file)
         if not path.exists():

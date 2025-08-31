@@ -4,8 +4,9 @@ import getpass
 from pathlib import Path
 
 required_dirs = [
-    'xlsx',
-    'docx'
+    'data'
+    'data/xlsx',
+    'data/docx'
 ]
 required_files = [
     'users.yml',

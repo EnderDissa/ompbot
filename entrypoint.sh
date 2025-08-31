@@ -1,3 +1,4 @@
+#!/bin/sh
 set -euo pipefail
 
 REQ="/app/requirements.txt"

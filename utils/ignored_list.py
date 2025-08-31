@@ -25,7 +25,7 @@ class IgnoredList:
 
     def save_to_file(self):
         try:
-            with open("ignored.txt", 'w+') as file:
+            with open("data/ignored.txt", 'w+') as file:
                 file.write('\n'.join(map(str, self.ignored)))
             print(f"Список игнорируемых сохранён.")
         except Exception as e:
@@ -33,7 +33,7 @@ class IgnoredList:
 
     def load_from_file(self):
         try:
-            with open("ignored.txt", 'r') as file:
+            with open("/data/ignored.txt", 'r') as file:
                 self.ignored = set(map(lambda x: int(x.strip()), file.readlines()))
             return (f"Список игнорируемых загружен.")
         except Exception as e:

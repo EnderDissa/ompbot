@@ -11,6 +11,7 @@ from ompbot import *
 class Main:
     def __init__(self):
         self.token = get_secrets()['token']
+        print(self.token)
         self.group_id = 228288169
 
         self.vk_session = vk_api.VkApi(token=self.token)

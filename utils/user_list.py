@@ -48,7 +48,7 @@ class UserList:
     #     self.clubs.clear()
     #     print("Список пользователей и клубов очищен.")
 
-    def save_to_file(self, filename="users.yml"):
+    def save_to_file(self, filename="/data/users.yml"):
         try:
             with open(filename, "w", encoding="utf-8") as file:
                 yaml.dump({str(uid): list(clubs) for uid, clubs in self.users.items()}, file, allow_unicode=True)

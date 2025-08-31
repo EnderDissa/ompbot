@@ -13,7 +13,7 @@ class Metrics:
             "manager": 0,
             "history": []
         }
-        self.filename = "/data/metrics.yaml"
+        self.filename = "data/metrics.yaml"
         if os.path.exists(self.filename):
             self.load_from_file()
 

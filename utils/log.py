@@ -4,7 +4,7 @@ logger = logging.getLogger()
 
 formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s", datefmt="%d.%m.%y %H:%M:%S")
 
-file_handler = logging.FileHandler("/data/py.log", mode="a")
+file_handler = logging.FileHandler("data/py.log", mode="a")
 file_handler.setLevel(logging.DEBUG)
 file_handler.setFormatter(formatter)
 

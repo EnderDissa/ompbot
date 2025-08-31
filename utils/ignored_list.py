@@ -33,7 +33,7 @@ class IgnoredList:
 
     def load_from_file(self):
         try:
-            with open("/data/ignored.txt", 'r') as file:
+            with open("data/ignored.txt", 'r') as file:
                 self.ignored = set(map(lambda x: int(x.strip()), file.readlines()))
             return (f"Список игнорируемых загружен.")
         except Exception as e:

@@ -8,7 +8,7 @@ from utils.log import *
 def attachment_extract(url, name, ext):
     response = requests.get(url)
 
-    if not os.path.exists(ext + '/' + name):
+    if not os.path.exists('data/' + ext + '/' + name):
         dir = 'data/' + ext +"/" + name
         os.mkdir(dir)
     path = 'data/' + ext + "/" + name + "/" + ("_".join(str(date.now())[:-7].replace(":", "-").split())) + "." + ext

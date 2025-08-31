@@ -19,6 +19,7 @@ RUN python -m pip install --upgrade pip \
 
 COPY . /app
 RUN chown -R bot:bot /app
+RUN chmod +x /app/entrypoint.sh
 
 USER bot
 WORKDIR /app

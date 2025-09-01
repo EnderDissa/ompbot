@@ -55,7 +55,7 @@ class UserList:
         except Exception as e:
             print(f"Ошибка при сохранении: {e}")
 
-    def load_from_file(self, filename="users.yml"):
+    def load_from_file(self, filename="data/users.yml"):
         try:
             with open(filename, "r+", encoding="utf-8") as file:
                 data = yaml.safe_load(file)

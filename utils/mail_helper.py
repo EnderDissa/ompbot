@@ -31,10 +31,10 @@ class MailHelper:
         """
         self.mail_password = get_secrets()["mail_password"]
 
-    def send_mail(self, attachments):
+    def send_mail(self, extended_subject, attachments):
         msg = MIMEMultipart()
         #Формируем сообщение
-        msg['Subject'] = 'Согласование СЗ'
+        msg['Subject'] = f"Согласование СЗ: {extended_subject}"
         msg['From'] = self.our_addr; msg['To'] = self.ufb_addr
         msg.attach(MIMEText(self.body, 'html'))
 

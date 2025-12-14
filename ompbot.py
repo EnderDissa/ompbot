@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
+import uuid
+
 import requests
 from datetime import datetime as date
 import re
@@ -8,13 +10,14 @@ import os
 import shutil
 
 from utils.mail_helper import MailHelper
+from utils.mail_sync_worker import MailSyncManager
 from utils.metrics import Metrics
 from utils.user_list import UserList
-
+from utils.mail_integration_helpers import save_sent_document, handle_admin_commands
 global  admin_chat, admins, groupid
 admin_chat = 1
 admins = [297002785, 101822925]
-groupid = 228288169
+groupid = 204516366
 
 def process_message_event(event, vk_helper):
     pl = event.object.get('payload')
@@ -50,9 +53,18 @@ def process_message_event(event, vk_helper):
             keyboard = vk_helper.create_keyboard(buttons)
             vk_helper.edit_keyboard(peer_id, conversation_message_id, keyboard)
 
+            title = pl.get('title')
+            path = pl.get('path')
+
+            title_with_marker = f'{title}'
+            extended_name = title_with_marker[title_with_marker.find("/СЗ_")+4:]
+            extended_name = extended_name[:extended_name.find("_")]
             mail = MailHelper()
-            print(title)
-            mail.send_mail(attachments=[pl['path']])
+            mail.send_mail(extended_name, [path])
+
+            doc_id = f"doc_{sender}"
+            save_sent_document(doc_id, title_with_marker, sender, 'ITMO')
+            tts = 'Письмо отправлено с маркером автосогласования'
 
         elif type == "send":
             tts += "\nпринята и отправлена на согласование!"
@@ -168,11 +180,11 @@ def process_message_new(event, vk_helper, ignored):
     msgraw = event.message.text
     msg = event.message.text.lower()
     msgs = msg.split()
-
-    user_get = vk_helper.vk.users.get(user_ids=uid)
-    user_get = user_get[0]
-    uname = user_get['first_name']
-    usurname = user_get['last_name']
+    if uid > 0:
+        user_get = vk_helper.vk.users.get(user_ids=uid)
+        user_get = user_get[0]
+        uname = user_get['first_name']
+        usurname = user_get['last_name']
 
     if event.from_chat:
         id = event.chat_id
@@ -181,6 +193,7 @@ def process_message_new(event, vk_helper, ignored):
         return
 
     else:
+
         if ignored.is_ignored(uid):
             if not ("менеджер" in msg or "админ" in msg):
                 return
@@ -255,6 +268,33 @@ def process_message_new(event, vk_helper, ignored):
                         "peer_id": uid,
                         "message": tts,
                         "keyboard": keyboard
+                    }]
+                elif msgs[0]=="sync":
+                    mail_sync = MailSyncManager()
+                    result = mail_sync.force_sync()
+
+                    if result['status'] == 'success':
+                        tts = "Синхронизация почты выполнена."
+                    else:
+                        tts = f"Ошибка синхронизации: {result['message']}"
+                    return[{
+                        "peer_id": uid,
+                        "message": tts,
+                    }]
+                if msgs[0] == "mailstat":
+                    mail_sync = MailSyncManager()
+                    metrics = mail_sync.get_metrics()
+
+                    tts = (
+                        f"Метрики почты:\n"
+                        f"Получено писем: {metrics.get('emails_received', 0)}\n"
+                        f"Согласовано документов: {metrics.get('documents_reconciled', 0)}\n"
+                        f"Ошибок: {metrics.get('reconciliation_failed', 0)}\n"
+                        f"Последняя проверка: {metrics.get('last_check', 'Never')}"
+                    )
+                    return[{
+                        "peer_id": uid,
+                        "message": tts,
                     }]
         attachment = event.object.message['attachments']
         if attachment:

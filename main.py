@@ -24,7 +24,7 @@ class Main:
         self.info(self.ignored.load_from_file())
 
         self.mail_sync = MailSyncManager()
-        self.mail_sync.start(poll_interval=300)
+        self.mail_sync.start(poll_interval=30)
 
 
         self.info("готов!\n")

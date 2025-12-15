@@ -9,7 +9,7 @@ from pathlib import Path
 # Исключаемые директории
 EXCLUDE_DIRS = {'.git', '__pycache__', '.pytest_cache', 'venv', '.venv',
                 'node_modules', '.idea', '.vscode', '.egg-info', 'dist', 'build', '.env'}
-EXCLUDE_FILES = {'.pyc', '.pyo', '.so', '.exe', '.dll'}
+EXCLUDE_FILES = {'.pyc', '.pyo', '.so', '.exe', '.dll', '.md','.json',}
 
 def scan_directory(path, output_file):
     """Сканирует директорию и сохраняет файлы в markdown"""

@@ -1,6 +1,7 @@
+# -*- coding: utf-8 -*-
+import logging
 import threading
 import time
-import logging
 from datetime import datetime
 from typing import Optional
 
@@ -10,18 +11,21 @@ logger = logging.getLogger(__name__)
 
 
 class MailSyncWorker:
-
-    def __init__(self, poll_interval: int = 300, min_confidence: int = 70):
+    def __init__(self, poll_interval: int = 300, min_confidence: int = 80):
         self.poll_interval = poll_interval
         self.min_confidence = min_confidence
 
         self.mail_receiver = MailReceiver()
         self.running = False
-        self.thread = None
+        self.thread: Optional[threading.Thread] = None
+
+        self.last_reconciliation_count: int = 0
+        self.last_check: Optional[str] = None
+        self.last_error_count: int = 0
 
     def start(self):
         if self.running:
-            logger.warning('Worker already running')
+            logger.warning('MailSyncWorker already running')
             return
 
         self.running = True
@@ -42,6 +46,7 @@ class MailSyncWorker:
                 self._sync_once()
             except Exception as e:
                 logger.error(f'Error in MailSyncWorker: {e}')
+                self.last_error_count += 1
 
             for _ in range(self.poll_interval):
                 if not self.running:
@@ -49,7 +54,7 @@ class MailSyncWorker:
                 time.sleep(1)
 
     def _sync_once(self):
-        logger.debug(f'Starting sync at {datetime.now().isoformat()}')
+        logger.debug(f'Starting mail sync at {datetime.now().isoformat()}')
 
         if not self.mail_receiver.connect():
             logger.error('Failed to connect IMAP')
@@ -57,15 +62,16 @@ class MailSyncWorker:
 
         try:
             emails = self.mail_receiver.fetch_emails(days=7)
-
             for email_info in emails:
                 self.mail_receiver.save_received_email(email_info)
 
             reconciled = self.mail_receiver.auto_reconcile(
                 min_confidence=self.min_confidence
             )
-
             self.mail_receiver.export_reconciliation_report(reconciled)
+
+            self.last_reconciliation_count = len(reconciled)
+            self.last_check = datetime.now().isoformat()
 
             logger.info(f'Sync completed: {len(reconciled)} reconciled')
 
@@ -87,7 +93,7 @@ class MailSyncManager:
             logger.warning('MailSyncManager already running')
             return
 
-        self.worker = MailSyncWorker(poll_interval)
+        self.worker = MailSyncWorker(poll_interval=poll_interval)
         self.worker.start()
 
     def stop(self):
@@ -114,11 +120,13 @@ class MailSyncManager:
             received = self.worker.mail_receiver.load_received_docs()
 
             return {
-                'sent_documents': len(sent),
-                'received_emails': len(received),
-                'last_check': datetime.now().isoformat()
+                'emails_received': len(received),
+                'documents_sent': len(sent),
+                'documents_reconciled': self.worker.last_reconciliation_count,
+                'reconciliation_failed': self.worker.last_error_count,
+                'last_check': self.worker.last_check or 'Never'
             }
-        except:
+        except Exception:
             return {}
 
 

@@ -1,25 +1,23 @@
+# -*- coding: utf-8 -*-
+import hashlib
 import imaplib
 import json
 import logging
-from email.header import decode_header
 from datetime import datetime, timedelta
-from typing import Optional, List, Dict
-import hashlib
+from email.header import decode_header
+from email.utils import parsedate_to_datetime
 from pathlib import Path
+from typing import Optional, List, Dict
 
 from utils import get_secrets
 
 logger = logging.getLogger(__name__)
 
 
-
-
-
 class MailReceiver:
-
     def __init__(self):
         self.our_addr = 'omp@itmo.ru'
-        self.ufb_addr = 'dberman@itmo.ru'
+        self.ufb_addr = '[Email12]'
         self.imap_server = 'imap.mail.ru'
         self.imap_port = 993
         self.imap = None
@@ -33,7 +31,10 @@ class MailReceiver:
 
     def _decode_mime_header(self, value) -> str:
         if isinstance(value, bytes):
-            return value.decode('utf-8', errors='ignore')
+            try:
+                return value.decode('utf-8', errors='ignore')
+            except Exception:
+                return ''
 
         if isinstance(value, str):
             try:
@@ -48,16 +49,18 @@ class MailReceiver:
                     else:
                         result += str(part).strip()
                 return result.strip()
-            except:
+            except Exception:
                 return value
 
         return str(value)
+
     def _init_storage(self):
         Path('data').mkdir(exist_ok=True)
 
         for filepath in [self.sent_docs_file, self.received_docs_file]:
-            if not Path(filepath).exists():
-                with open(filepath, 'w', encoding='utf-8') as f:
+            p = Path(filepath)
+            if not p.exists():
+                with p.open('w', encoding='utf-8') as f:
                     json.dump({}, f, ensure_ascii=False, indent=2)
 
     def connect(self) -> bool:
@@ -68,34 +71,20 @@ class MailReceiver:
             return True
         except Exception as e:
             logger.error(f'Failed to connect IMAP: {e}')
+            self.imap = None
             return False
 
     def disconnect(self):
         if self.imap:
             try:
                 self.imap.close()
-                self.imap.logout()
-            except:
+            except Exception:
                 pass
-
-    def _decode_header(self, value) -> str:
-        if isinstance(value, bytes):
-            return value.decode('utf-8', errors='ignore')
-
-        if isinstance(value, str):
-            return value
-
-        try:
-            decoded_parts = decode_header(value)
-            result = ""
-            for part, encoding in decoded_parts:
-                if isinstance(part, bytes):
-                    result += part.decode(encoding or 'utf-8', errors='ignore')
-                else:
-                    result += str(part)
-            return result
-        except:
-            return str(value)
+            try:
+                self.imap.logout()
+            except Exception:
+                pass
+            self.imap = None
 
     def fetch_emails(self, days: int = 7) -> List[Dict]:
         if not self.imap:
@@ -104,7 +93,10 @@ class MailReceiver:
 
         try:
             ufb_folder = '&BCMEJAQR-'
-            self.imap.select(ufb_folder)
+            status, _ = self.imap.select(ufb_folder)
+            if status != 'OK':
+                logger.warning(f'Cannot select folder {ufb_folder}: {status}')
+                return []
 
             since_date = (datetime.now() - timedelta(days=days)).strftime('%d-%b-%Y')
             status, email_ids = self.imap.search(None, f'SINCE {since_date}')
@@ -116,7 +108,7 @@ class MailReceiver:
             emails = []
             for email_id in email_ids[0].split():
                 status, msg_data = self.imap.fetch(email_id, '(RFC822)')
-                if status != 'OK':
+                if status != 'OK' or not msg_data:
                     continue
 
                 try:
@@ -139,19 +131,37 @@ class MailReceiver:
         try:
             subject = self._decode_mime_header(msg.get('Subject', ''))
             sender = self._decode_mime_header(msg.get('From', ''))
-            date_str = msg.get('Date', datetime.now().isoformat())
+
+            raw_date = msg.get('Date')
+            if raw_date:
+                try:
+                    dt = parsedate_to_datetime(raw_date)
+                    if dt.tzinfo:
+                        dt = dt.astimezone().replace(tzinfo=None)
+                    date_str = dt.isoformat()
+                except Exception:
+                    date_str = datetime.now().isoformat()
+            else:
+                date_str = datetime.now().isoformat()
 
             body = ""
             if msg.is_multipart():
                 for part in msg.walk():
                     if part.get_content_type() == 'text/plain':
-                        body = part.get_payload(decode=True).decode('utf-8', errors='ignore')
+                        try:
+                            body = part.get_payload(decode=True).decode(
+                                'utf-8', errors='ignore'
+                            )
+                        except Exception:
+                            body = ""
                         break
             else:
                 try:
-                    body = msg.get_payload(decode=True).decode('utf-8', errors='ignore')
-                except:
-                    body = msg.get_payload()
+                    body = msg.get_payload(decode=True).decode(
+                        'utf-8', errors='ignore'
+                    )
+                except Exception:
+                    body = str(msg.get_payload())
 
             attachments = []
             if msg.is_multipart():
@@ -159,14 +169,16 @@ class MailReceiver:
                     if part.get_content_disposition() == 'attachment':
                         filename = part.get_filename()
                         if filename:
+                            decoded_name = self._decode_mime_header(filename)
+                            payload = part.get_payload(decode=True) or b""
                             attachments.append({
-                                'filename': self._decode_header(filename),
+                                'filename': decoded_name,
                                 'content_type': part.get_content_type(),
-                                'size': len(part.get_payload(decode=True))
+                                'size': len(payload)
                             })
 
             email_hash = hashlib.md5(
-                f'{subject}|{sender}|{date_str}'.encode()
+                f'{subject}|{sender}|{date_str}'.encode('utf-8', errors='ignore')
             ).hexdigest()[:16]
 
             return {
@@ -195,7 +207,6 @@ class MailReceiver:
                 json.dump(docs, f, ensure_ascii=False, indent=2)
 
             logger.info(f'Saved email: {email_info["subject"]}')
-
         except Exception as e:
             logger.error(f'Error saving email: {e}')
 
@@ -227,33 +238,51 @@ class MailReceiver:
         sent_filename = sent_doc.get('filename', '').lower()
         received_subject = received_doc.get('subject', '').lower()
 
-        if 'auto' in sent_filename and 're:' in received_subject:
+        if 'сз' in received_subject:
             matches['subject_match'] = True
 
-        received_sender = received_doc.get('sender', '').lower()
+        if sent_filename:
+            base = sent_filename.split('/')[-1]
+            base = base.rsplit('.', 1)[0]
+            parts = base.split('_')
+            club_token = parts[1] if len(parts) >= 2 else ""
 
-        if 'pass@itmo.ru' in received_sender or 'dberman@itmo.ru' in received_sender:
+            subj_norm = received_subject.replace(' ', '_')
+            base_norm = base.replace(' ', '_')
+            club_norm = club_token.replace(' ', '_')
+
+            if base_norm and base_norm in subj_norm:
+                matches['subject_match'] = True
+            elif club_norm and club_norm in subj_norm:
+                matches['subject_match'] = True
+
+        received_sender = received_doc.get('sender', '').lower()
+        if '[Email13]' in received_sender or '[Email14]' in received_sender:
             matches['sender_match'] = True
 
         try:
-            sent_date = datetime.fromisoformat(sent_doc.get('sent_at', ''))
-            received_date = datetime.fromisoformat(received_doc.get('date', ''))
+            sent_date_str = sent_doc.get('sent_at')
+            received_date_str = received_doc.get('date')
 
-            if received_date > sent_date and (received_date - sent_date).total_seconds() < 86400 * 7:
-                matches['date_match'] = True
-        except:
-            pass
+            if sent_date_str and received_date_str:
+                sent_date = datetime.fromisoformat(sent_date_str)
+                received_date = datetime.fromisoformat(received_date_str)
 
-        confidence = sum([
-            matches['subject_match'] * 40,
-            matches['sender_match'] * 40,
-            matches['date_match'] * 20
-        ])
+                if received_date > sent_date and (received_date - sent_date).total_seconds() < 86400 * 7:
+                    matches['date_match'] = True
+        except Exception as e:
+            logger.debug(f'Failed to parse dates for comparison: {e}')
+
+        confidence = (
+            (50 if matches['subject_match'] else 0) +
+            (30 if matches['sender_match'] else 0) +
+            (20 if matches['date_match'] else 0)
+        )
         matches['confidence'] = confidence
 
-        if confidence >= 70:
+        if confidence >= 80:
             matches['status'] = 'LIKELY_MATCH'
-        elif confidence >= 50:
+        elif confidence >= 60:
             matches['status'] = 'POSSIBLE_MATCH'
         else:
             matches['status'] = 'NOT_MATCHED'
@@ -273,7 +302,6 @@ class MailReceiver:
 
             for received_id, received_doc in received_docs.items():
                 comparison = self.compare_documents(sent_doc, received_doc)
-
                 if comparison['confidence'] > best_confidence:
                     best_confidence = comparison['confidence']
                     best_match = {
@@ -285,17 +313,19 @@ class MailReceiver:
             if best_match and best_confidence >= min_confidence:
                 best_match['status'] = 'RECONCILED'
                 reconciled.append(best_match)
-
                 logger.info(
-                    f'Reconciled: {sent_doc["filename"]} '
+                    f'Reconciled: {sent_doc.get("filename", sent_id)} '
                     f'(confidence: {best_confidence}%)'
                 )
 
         logger.info(f'Total reconciled: {len(reconciled)}')
         return reconciled
 
-    def export_reconciliation_report(self, reconciled: List[Dict],
-                                     output_file: str = 'data/reconciliation_report.json'):
+    def export_reconciliation_report(
+        self,
+        reconciled: List[Dict],
+        output_file: str = 'data/reconciliation_report.json'
+    ):
         try:
             with open(output_file, 'w', encoding='utf-8') as f:
                 json.dump({

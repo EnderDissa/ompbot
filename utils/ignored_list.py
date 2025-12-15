@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 class IgnoredList:
     def __init__(self):
         self.ignored = set()
@@ -5,36 +7,36 @@ class IgnoredList:
     def add(self, uid):
         if uid not in self.ignored:
             self.ignored.add(uid)
-            print(f"Пользователь {uid} добавлен в игнор.")
+            print("Пользователь {} добавлен в игнор.".format(uid))
         else:
-            print(f"Пользователь {uid} уже в игноре.")
+            print("Пользователь {} уже в игноре.".format(uid))
 
     def remove(self, uid):
         if uid in self.ignored:
             self.ignored.remove(uid)
-            print(f"Пользователь {uid} удалён из игнора.")
+            print("Пользователь {} удалён из игнора.".format(uid))
         else:
-            print(f"Пользователь {uid} не найден в списке игнорируемых.")
+            print("Пользователь {} не найден в списке игнорируемых.".format(uid))
 
     def is_ignored(self, uid):
         return uid in self.ignored
 
     def clear(self):
         self.ignored.clear()
-        self.info("Список игнорируемых пользователей очищен.")
+        print("Список игнорируемых пользователей очищен.")
 
     def save_to_file(self):
         try:
             with open("data/ignored.txt", 'w+') as file:
                 file.write('\n'.join(map(str, self.ignored)))
-            print(f"Список игнорируемых сохранён.")
+            print("Список игнорируемых сохранён.")
         except Exception as e:
-            print(f"Ошибка при сохранении: {e}")
+            print("Ошибка при сохранении: {}".format(e))
 
     def load_from_file(self):
         try:
             with open("data/ignored.txt", 'r') as file:
                 self.ignored = set(map(lambda x: int(x.strip()), file.readlines()))
-            return (f"Список игнорируемых загружен.")
+            return ("Список игнорируемых загружен.")
         except Exception as e:
-            print(f"Ошибка при загрузке: {e}")
+            print("Ошибка при загрузке: {}".format(e))

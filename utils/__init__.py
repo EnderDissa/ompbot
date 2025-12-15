@@ -4,6 +4,7 @@ from .vk_helper import *
 from .net_helper import *
 
 
+
 def get_secrets():
     # with open("token.txt", 'r') as f:
     #     token = f.readline()

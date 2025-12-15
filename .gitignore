@@ -6,3 +6,5 @@ ignored.txt
 *.log
 *.yml
 *.yaml
+*.json
+.env

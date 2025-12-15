@@ -6,12 +6,12 @@ from utils import IgnoredList, get_secrets
 from utils import VKHelper
 from utils.log import *
 from ompbot import *
+from utils.mail_sync_worker import MailSyncManager
 
 
 class Main:
     def __init__(self):
         self.token = get_secrets()['token']
-        print(self.token)
         self.group_id = 228288169
 
         self.vk_session = vk_api.VkApi(token=self.token)
@@ -22,10 +22,16 @@ class Main:
         self.ignored = IgnoredList()
         self.metrics = Metrics()
         self.info(self.ignored.load_from_file())
+
+        self.mail_sync = MailSyncManager()
+        self.mail_sync.start(poll_interval=30, vk_helper=self.VK)
+
         self.info("готов!\n")
 
         #handle_actions(self, actions)
-
+    def __del__(self):
+        if hasattr(self, 'mail_sync'):
+            self.mail_sync.stop()
     def run(self):
         while True:
             try:
@@ -54,7 +60,6 @@ class Main:
     def handle_actions(self, actions):
         if not actions:
             return
-        print(actions)
         for action in actions:
             peer_id = action.get("peer_id")
             message = action.get("message", "")

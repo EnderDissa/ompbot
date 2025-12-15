@@ -1,126 +1,178 @@
 # -*- coding: utf-8 -*-
 import json
+import uuid
 import requests
 from datetime import datetime as date
 import re
-from utils import check_excel, create_excel, net_helper, mail_helper
 import os
 import shutil
 
+from utils import check_excel, create_excel, net_helper, mail_helper
 from utils.mail_helper import MailHelper
+from utils.mail_sync_worker import MailSyncManager
 from utils.metrics import Metrics
 from utils.user_list import UserList
+from utils.mail_integration_helpers import save_sent_document
 
-global  admin_chat, admins, groupid
 admin_chat = 1
 admins = [297002785, 101822925]
 groupid = 228288169
 
+
 def process_message_event(event, vk_helper):
-    pl = event.object.get('payload')
+    payload = event.object.get('payload')
     user_list = UserList()
     metrics = Metrics()
-    if pl:
-        conversation_message_id = event.object['conversation_message_id']
-        peer_id = event.object['peer_id']
 
-        type = pl['type']
-        sender = int(pl['sender'])
-        if type in ['auto', 'send','approve', 'annul']:
-            title = pl['title']
-            tts = "Ваша служебная записка " + title
+    if not payload:
+        return
+
+    conversation_message_id = event.object['conversation_message_id']
+    peer_id = event.object['peer_id']
+
+    type_ = payload.get('type')
+    sender = int(payload.get('sender'))
+
+    if type_ in ['auto', 'send', 'approve', 'annul']:
+        title = payload.get('title')
+        tts = "Ваша служебная записка " + title
+    else:
+        tts = ""
+        title = None
+
+    if type_ == 'auto':
+        tts += "\nпринята и отправлена на согласование!"
+        buttons = [
+            {
+                "label": "ОТПРАВЛЕНО",
+                "payload": {"type": "sended", "sender": sender, "title": title},
+                "color": "positive"
+            },
+            {
+                "label": "СОГЛАСОВАТЬ",
+                "payload": {
+                    "type": "approve",
+                    "sender": sender,
+                    "title": title,
+                    "isSended": True
+                },
+                "color": "primary"
+            },
+            {
+                "label": "АННУЛИРОВАТЬ",
+                "payload": {"type": "annul", 'sender': sender, 'title': title, 'byAdmin': True},
+                "color": "negative",
+                "newline": True
+            }
+        ]
+        keyboard = vk_helper.create_keyboard(buttons)
+        vk_helper.edit_keyboard(peer_id, conversation_message_id, keyboard)
+
+        title_with_marker = f'{title}'
+        path = payload.get('path')
+
+        club_name_start = title_with_marker.find("/СЗ_") + 4
+        club_name_end = title_with_marker.find("_", club_name_start)
+        club_name = title_with_marker[club_name_start:club_name_end]
+
+        document_name = title_with_marker[club_name_end + 1:]
+        if "." in document_name:
+            document_name = document_name[:document_name.rfind(".")]
+
+        mail = MailHelper()
+        mail.send_mail(club_name, document_name, [path])
+
+        doc_id = f"doc_{sender}_{uuid.uuid4().hex[:8]}"
+        save_sent_document(doc_id, title_with_marker, sender, 'ITMO')
+
+    elif type_ == "send":
+        tts += "\nпринята и отправлена на согласование!"
+        buttons = [
+            {
+                "label": "ОТПРАВЛЕНО",
+                "payload": {"type": "sended", "sender": sender, "title": title},
+                "color": "positive"
+            },
+            {
+                "label": "СОГЛАСОВАТЬ",
+                "payload": {
+                    "type": "approve",
+                    "sender": sender,
+                    "title": title,
+                    "isSended": True
+                },
+                "color": "primary"
+            },
+                {
+                    "label": "АННУЛИРОВАТЬ",
+                    "payload": {"type": "annul", 'sender': sender, 'title': title, 'byAdmin': True},
+                    "color": "negative",
+                    "newline": True
+                }
+        ]
+        keyboard = vk_helper.create_keyboard(buttons)
+        vk_helper.edit_keyboard(peer_id, conversation_message_id, keyboard)
+
+    elif type_ == "approve":
+        is_sended = payload.get('isSended')
+        if is_sended:
+            tts += "\nсогласована и внесена в систему для отображения на мониторе охраны!"
         else:
-            tts=""
-            title = None
+            tts += "\nсогласована и внесена в систему для получения QR на терминале!"
 
-        if type=='auto':
-            tts += "\nпринята и отправлена на согласование!"
-            buttons = [
-                {
-                    "label": "ОТПРАВЛЕНО",
-                    "payload": {"type": "sended", "sender": sender, "title": title},
-                    "color": "positive"
+        buttons = [
+            {
+                "label": "ОТПРАВЛЕНО",
+                "payload": {"type": "sended", "sender": sender, "title": title},
+                "color": "positive"
+            },
+            {
+                "label": "СОГЛАСОВАНО",
+                "payload": {
+                    "type": "approved",
+                    "sender": sender,
+                    "title": title,
+                    "isSended": True
                 },
-                {
-                    "label": "СОГЛАСОВАТЬ",
-                    "payload": {"type": "approve", "sender": sender, "title": title, "isSended": True},
-                    "color": "primary"
-                }
-            ]
-            keyboard = vk_helper.create_keyboard(buttons)
-            vk_helper.edit_keyboard(peer_id, conversation_message_id, keyboard)
+                "color": "positive"
+            }
+        ]
+        keyboard = vk_helper.create_keyboard(buttons)
+        vk_helper.edit_keyboard(peer_id, conversation_message_id, keyboard)
 
-            mail = MailHelper()
-            print(title)
-            mail.send_mail(attachments=[pl['path']])
+        metrics.record_memo_approved(sender)
 
-        elif type == "send":
-            tts += "\nпринята и отправлена на согласование!"
-            buttons = [
-                {
-                    "label": "ОТПРАВЛЕНО",
-                    "payload": {"type": "sended", "sender": sender, "title": title},
-                    "color": "positive"
+    elif type_ == "annul":
+        by_admin = payload.get('byAdmin')
+        managerflag = " МЕНЕДЖЕРОМ" if by_admin else ""
+        tts += f" АННУЛИРОВАНА{managerflag}!"
+        buttons = [
+            {
+                "label": "АННУЛИРОВАНО",
+                "payload": {
+                    "type": "annuled",
+                    "sender": sender,
+                    "title": title
                 },
-                {
-                    "label": "СОГЛАСОВАТЬ",
-                    "payload": {"type": "approve", "sender": sender, "title": title, "isSended": True},
-                    "color": "primary"
-                }
-            ]
-            keyboard = vk_helper.create_keyboard(buttons)
-            vk_helper.edit_keyboard(peer_id, conversation_message_id, keyboard)
+                "color": "negative"
+            }
+        ]
+        keyboard = vk_helper.create_keyboard(buttons)
+        vk_helper.edit_keyboard(peer_id, conversation_message_id, keyboard)
 
-        elif type == "approve":
-            is_sended = pl['isSended']
-            if is_sended:
-                tts += "\nсогласована и внесена в систему для отображения на мониторе охраны!"
-            else:
-                tts += "\nсогласована и внесена в систему для получения QR на терминале!"
-            buttons = [
-                {
-                    "label": "ОТПРАВЛЕНО",
-                    "payload": {"type": "sended", "sender": sender, "title": title},
-                    "color": "positive"
-                },
-                {
-                    "label": "СОГЛАСОВАНО",
-                    "payload": {"type": "approved", "sender": sender, "title": title, "isSended": True},
-                    "color": "positive"
-                }
-            ]
-            keyboard = vk_helper.create_keyboard(buttons)
-            vk_helper.edit_keyboard(peer_id, conversation_message_id, keyboard)
-
-            metrics.record_memo_approved(sender)
-
-        elif type == "annul":
-            by_admin = pl['byAdmin']
-            managerflag = " МЕНЕДЖЕРОМ" if by_admin else ""
-            tts += f" АННУЛИРОВАНА{managerflag}!"
-            buttons = [
-                {
-                    "label": "АННУЛИРОВАНО",
-                    "payload": {"type": "annuled", "sender": sender, "title": title},
-                    "color": "negative"
-                }
-            ]
-            keyboard = vk_helper.create_keyboard(buttons)
-            vk_helper.edit_keyboard(peer_id, conversation_message_id, keyboard)
-        elif type=="club":
-            status=pl['status']
-            club=pl['club']
-            if status=="decline":
-                tts+="Отмена! Отправь мне служебную записку с правильным названием."
-            elif status=="accept":
-                tts+=f"Принято! Ты связал свой айди с клубом «{club}». Теперь отправь свою служебную записку заново"
-                user_list.add(sender,club)
+    elif type_ == "club":
+        status = payload.get('status')
+        club = payload.get('club')
+        if status == "decline":
+            tts += "Отмена! Отправь мне служебную записку с правильным названием."
+        elif status == "accept":
+            tts += f"Принято! Ты связал свой айди с клубом «{club}». Теперь отправь свою служебную записку заново"
+            user_list.add(sender, club)
             keyboard = None
             vk_helper.edit_keyboard(peer_id, conversation_message_id, keyboard)
+    else:
+        return
 
-
-        else:
-            return
     return [{
         "peer_id": sender,
         "message": tts,
@@ -168,11 +220,11 @@ def process_message_new(event, vk_helper, ignored):
     msgraw = event.message.text
     msg = event.message.text.lower()
     msgs = msg.split()
-
-    user_get = vk_helper.vk.users.get(user_ids=uid)
-    user_get = user_get[0]
-    uname = user_get['first_name']
-    usurname = user_get['last_name']
+    if uid > 0:
+        user_get = vk_helper.vk.users.get(user_ids=uid)
+        user_get = user_get[0]
+        uname = user_get['first_name']
+        usurname = user_get['last_name']
 
     if event.from_chat:
         id = event.chat_id
@@ -181,6 +233,7 @@ def process_message_new(event, vk_helper, ignored):
         return
 
     else:
+
         if ignored.is_ignored(uid):
             if not ("менеджер" in msg or "админ" in msg):
                 return
@@ -256,6 +309,37 @@ def process_message_new(event, vk_helper, ignored):
                         "message": tts,
                         "keyboard": keyboard
                     }]
+                elif msgs[0] == "sync":
+                    mail_sync = MailSyncManager()
+                    result = mail_sync.force_sync()
+
+                    if result['status'] == 'success':
+                        tts = "Синхронизация почты выполнена."
+                    else:
+                        tts = f"Ошибка синхронизации: {result['message']}"
+
+                    return [{
+                        "peer_id": uid,
+                        "message": tts,
+                    }]
+
+                elif msgs[0] == "mailstat":
+                    mail_sync = MailSyncManager()
+                    m = mail_sync.get_metrics()
+
+                    tts = (
+                        "Метрики почты:\n"
+                        f"Получено писем: {m.get('emails_received', 0)}\n"
+                        f"Отправлено документов: {m.get('documents_sent', 0)}\n"
+                        f"Сопоставлено документов: {m.get('documents_reconciled', 0)}\n"
+                        f"Ошибок: {m.get('reconciliation_failed', 0)}\n"
+                        f"Последняя проверка: {m.get('last_check', 'Never')}"
+                    )
+
+                return [{
+                    "peer_id": uid,
+                    "message": tts,
+                }]
         attachment = event.object.message['attachments']
         if attachment:
             attachment = attachment[0]

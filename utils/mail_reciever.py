@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class MailReceiver:
     def __init__(self):
         self.our_addr = 'omp@itmo.ru'
-        self.ufb_addr = '[Email12]'
+        self.ufb_addr = 'dberman@itmo.ru'
         self.imap_server = 'imap.mail.ru'
         self.imap_port = 993
         self.imap = None
@@ -120,7 +120,7 @@ class MailReceiver:
                 except Exception as e:
                     logger.warning(f'Error parsing email: {e}')
 
-            logger.info(f'Fetched {len(emails)} emails from UFB folder')
+            logger.info(f'Fetched {len(emails)} emails from folder')
             return emails
 
         except Exception as e:
@@ -177,13 +177,10 @@ class MailReceiver:
                                 'size': len(payload)
                             })
 
-            email_hash = hashlib.md5(
-                f'{subject}|{sender}|{date_str}'.encode('utf-8', errors='ignore')
-            ).hexdigest()[:16]
+            email_id_str = email_id.decode() if isinstance(email_id, bytes) else str(email_id)
 
             return {
-                'id': email_hash,
-                'email_id': email_id.decode(),
+                'id': email_id_str,
                 'subject': subject,
                 'sender': sender,
                 'date': date_str,
@@ -201,12 +198,15 @@ class MailReceiver:
             with open(self.received_docs_file, 'r', encoding='utf-8') as f:
                 docs = json.load(f)
 
-            docs[email_info['id']] = email_info
+            if email_info['id'] not in docs:
+                docs[email_info['id']] = email_info
 
-            with open(self.received_docs_file, 'w', encoding='utf-8') as f:
-                json.dump(docs, f, ensure_ascii=False, indent=2)
+                with open(self.received_docs_file, 'w', encoding='utf-8') as f:
+                    json.dump(docs, f, ensure_ascii=False, indent=2)
 
-            logger.info(f'Saved email: {email_info["subject"]}')
+                logger.info(f'Saved email: {email_info["subject"]}')
+            else:
+                logger.debug(f'Email already exists: {email_info["id"]}')
         except Exception as e:
             logger.error(f'Error saving email: {e}')
 
@@ -257,7 +257,7 @@ class MailReceiver:
                 matches['subject_match'] = True
 
         received_sender = received_doc.get('sender', '').lower()
-        if '[Email13]' in received_sender or '[Email14]' in received_sender:
+        if 'pass@itmo.ru' in received_sender or 'dberman@itmo.ru' in received_sender:
             matches['sender_match'] = True
 
         try:
@@ -292,11 +292,23 @@ class MailReceiver:
     def auto_reconcile(self, min_confidence: int = 70) -> List[Dict]:
         sent_docs = self.load_sent_docs()
         received_docs = self.load_received_docs()
+
+        try:
+            with open('data/reconciliation_report.json', 'r', encoding='utf-8') as f:
+                existing_report = json.load(f)
+                existing_reconciled = {item['sent_doc_id'] for item in existing_report.get('reconciled_docs', [])}
+        except:
+            existing_reconciled = set()
+
         reconciled = []
 
         logger.info(f'Comparing {len(sent_docs)} sent vs {len(received_docs)} received')
 
         for sent_id, sent_doc in sent_docs.items():
+            if sent_id in existing_reconciled:
+                logger.debug(f'Skipping already reconciled: {sent_id}')
+                continue
+
             best_match = None
             best_confidence = 0
 

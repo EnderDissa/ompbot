@@ -12,7 +12,7 @@ from utils.mail_sync_worker import MailSyncManager
 class Main:
     def __init__(self):
         self.token = get_secrets()['token']
-        self.group_id = 204516366
+        self.group_id = 228288169
 
         self.vk_session = vk_api.VkApi(token=self.token)
         self.VK = VKHelper(self.vk_session)
@@ -24,8 +24,7 @@ class Main:
         self.info(self.ignored.load_from_file())
 
         self.mail_sync = MailSyncManager()
-        self.mail_sync.start(poll_interval=30)
-
+        self.mail_sync.start(poll_interval=30, vk_helper=self.VK)
 
         self.info("готов!\n")
 

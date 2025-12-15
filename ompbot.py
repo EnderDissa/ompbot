@@ -12,11 +12,11 @@ from utils.mail_helper import MailHelper
 from utils.mail_sync_worker import MailSyncManager
 from utils.metrics import Metrics
 from utils.user_list import UserList
-from utils.mail_integration_helpers import save_sent_document, handle_admin_commands
+from utils.mail_integration_helpers import save_sent_document
 
 admin_chat = 1
 admins = [297002785, 101822925]
-groupid = 204516366
+groupid = 228288169
 
 
 def process_message_event(event, vk_helper):
@@ -41,7 +41,6 @@ def process_message_event(event, vk_helper):
         title = None
 
     if type_ == 'auto':
-        # Меняем клавиатуру в админском чате
         tts += "\nпринята и отправлена на согласование!"
         buttons = [
             {
@@ -58,16 +57,20 @@ def process_message_event(event, vk_helper):
                     "isSended": True
                 },
                 "color": "primary"
+            },
+            {
+                "label": "АННУЛИРОВАТЬ",
+                "payload": {"type": "annul", 'sender': sender, 'title': title, 'byAdmin': True},
+                "color": "negative",
+                "newline": True
             }
         ]
         keyboard = vk_helper.create_keyboard(buttons)
         vk_helper.edit_keyboard(peer_id, conversation_message_id, keyboard)
 
-        # Достаём данные для письма
         title_with_marker = f'{title}'
         path = payload.get('path')
 
-        # Извлечение названия клуба и документа из имени файла
         club_name_start = title_with_marker.find("/СЗ_") + 4
         club_name_end = title_with_marker.find("_", club_name_start)
         club_name = title_with_marker[club_name_start:club_name_end]
@@ -79,11 +82,8 @@ def process_message_event(event, vk_helper):
         mail = MailHelper()
         mail.send_mail(club_name, document_name, [path])
 
-        # Уникальный id документа, чтобы не перетирать записи
         doc_id = f"doc_{sender}_{uuid.uuid4().hex[:8]}"
         save_sent_document(doc_id, title_with_marker, sender, 'ITMO')
-
-        tts = 'Письмо отправлено с маркером автосогласования'
 
     elif type_ == "send":
         tts += "\nпринята и отправлена на согласование!"
@@ -102,7 +102,13 @@ def process_message_event(event, vk_helper):
                     "isSended": True
                 },
                 "color": "primary"
-            }
+            },
+                {
+                    "label": "АННУЛИРОВАТЬ",
+                    "payload": {"type": "annul", 'sender': sender, 'title': title, 'byAdmin': True},
+                    "color": "negative",
+                    "newline": True
+                }
         ]
         keyboard = vk_helper.create_keyboard(buttons)
         vk_helper.edit_keyboard(peer_id, conversation_message_id, keyboard)

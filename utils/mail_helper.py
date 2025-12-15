@@ -9,37 +9,46 @@ from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 
 from utils import get_secrets
+import hashlib
 
+def generate_short_hash(document_name: str) -> str:
+    hash_obj = hashlib.md5(document_name.encode())
+    hash_hex = hash_obj.hexdigest()
+    hash_int = int(hash_hex, 16)
+    short_hash = str(hash_int % 1000000).zfill(6)
+    return short_hash
 
 class MailHelper:
     def __init__(self):
         self.our_addr = 'omp@itmo.ru'
-        self.ufb_addr = '[Email11]'
+        self.ufb_addr = 'pass@itmo.ru'
         self.mail_password = get_secrets()["mail_password"]
 
     def send_mail(self, club_name: str, document_name: str, attachments):
         msg = MIMEMultipart()
 
-        marker = f"AUTO-{int(time.time())}"
-        short_marker = marker[-6:]
+        marker = document_name[document_name.find("/СЗ_")+4:]
+        marker = marker[:marker.find("_")]
 
-        msg['Subject'] = f"СЗ {club_name}: {document_name} ({short_marker})"
+
+        unique = generate_short_hash(document_name)
+
+        msg['Subject'] = f"Согласование СЗ: {club_name} {marker} ({unique})"
         msg['From'] = self.our_addr
         msg['To'] = self.ufb_addr
+
+        manager = "Берман Денис Константинович" #todo: добавить парсинг других манагеров
 
         body = f"""
         <p>Здравствуйте!</p>
         <p>Прошу согласовать служебную записку во вложении.</p>
-        <p><strong>Клуб:</strong> {club_name}</p>
-        <p><strong>Документ:</strong> {document_name}</p>
-        <p><strong>Идентификатор:</strong> {marker}</p>
         <br>
         <blockquote>
         <img src="https://itmo.ru/file/pages/213/logo_osnovnoy_russkiy_chernyy.png" alt="ITMO" width="150"><br>
-        <p>С уважением, [Surname5] [Name5] [Patronymic5]<br>
+        <p>С уважением, {manager}<br>
         Офис молодежных проектов | Youth Projects Office<br>
-        <em>[Address8]<br>
-        Email: omp@itmo.ru<br></em>
+        <em>Кронверкский пр., 49, лит. А, оф. 1111, Санкт-Петербург, Россия | Kronverksky Pr. 49, bldg. A, off. 1111, St. Petersburg, Russia<br>
+        Email: {self.our_addr}<br></em>
         <strong>Университет ИТМО | ITMO University <strong><br>
         <a href="https://itmo.ru/">itmo.ru</a>
         </p>

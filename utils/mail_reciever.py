@@ -235,30 +235,82 @@ class MailReceiver:
             'confidence': 0
         }
 
-        sent_filename = sent_doc.get('filename', '').lower()
-        received_subject = received_doc.get('subject', '').lower()
+        # --- Critical safety guards ---
+        # 1) Never reconcile on our own outgoing emails.
+        #    This is the root cause of the "Автосогласование" false-positive:
+        #    we send a message, it appears in the mailbox folder, and the bot
+        #    mistakenly treats it as an approval.
+        received_sender = (received_doc.get('sender', '') or '').lower()
+        if self.our_addr.lower() in received_sender:
+            # Self-sent email. Ignore completely.
+            matches['status'] = 'SELF_SENT_IGNORED'
+            matches['confidence'] = 0
+            return matches
 
-        if 'сз' in received_subject:
+        # 2) Approval must come from trusted UFB addresses.
+        #    Without this guard, any email with "СЗ" in subject can be matched.
+        trusted_senders = {
+            'pass@itmo.ru',
+            'dberman@itmo.ru',
+        }
+        # Also allow configured ufb_addr if it differs.
+        if self.ufb_addr:
+            trusted_senders.add(self.ufb_addr.lower())
+
+        if any(addr in received_sender for addr in trusted_senders):
+            matches['sender_match'] = True
+        else:
+            # Sender mismatch => never reconcile.
+            matches['confidence'] = 0
+            matches['status'] = 'NOT_MATCHED'
+            return matches
+
+        sent_filename_raw = sent_doc.get('filename', '') or ''
+        sent_filename = sent_filename_raw.lower()
+        received_subject = (received_doc.get('subject', '') or '').lower()
+
+        # --- Subject matching ---
+        # We use the unique short-hash that is embedded into the outgoing email subject:
+        #   "... ({unique})"
+        # to avoid mixing different memos with the same club/token.
+        unique = ''
+        try:
+            # Sent doc filename is expected like: "/СЗ_<club>_<document_name>.docx"
+            # or similar. We reconstruct document_name the same way as in MailHelper.
+            base = sent_filename.split('/')[-1]
+            base = base.rsplit('.', 1)[0]
+            parts = base.split('_', 2)
+            # parts: ["сз", "<club>", "<document_name>"]
+            document_name = parts[2] if len(parts) >= 3 else base
+            # Keep the hashing logic local to avoid importing heavy modules.
+            import hashlib
+            hash_hex = hashlib.md5(document_name.encode('utf-8', errors='ignore')).hexdigest()
+            unique = str(int(hash_hex, 16) % 1000000).zfill(6)
+        except Exception:
+            unique = ''
+
+        subj_norm = received_subject.replace(' ', '_')
+        subject_score = 0
+        if unique and unique in received_subject:
             matches['subject_match'] = True
-
-        if sent_filename:
+            subject_score = 60
+        elif sent_filename:
             base = sent_filename.split('/')[-1]
             base = base.rsplit('.', 1)[0]
             parts = base.split('_')
             club_token = parts[1] if len(parts) >= 2 else ""
 
-            subj_norm = received_subject.replace(' ', '_')
             base_norm = base.replace(' ', '_')
             club_norm = club_token.replace(' ', '_')
 
+            # Strong match: full base name contained in subject
             if base_norm and base_norm in subj_norm:
                 matches['subject_match'] = True
+                subject_score = 60
+            # Weaker match: club token only (still allowed but requires date match)
             elif club_norm and club_norm in subj_norm:
                 matches['subject_match'] = True
-
-        received_sender = received_doc.get('sender', '').lower()
-        if 'pass@itmo.ru' in received_sender or 'dberman@itmo.ru' in received_sender:
-            matches['sender_match'] = True
+                subject_score = 30
 
         try:
             sent_date_str = sent_doc.get('sent_at')
@@ -273,10 +325,14 @@ class MailReceiver:
         except Exception as e:
             logger.debug(f'Failed to parse dates for comparison: {e}')
 
+        # Confidence model:
+        # - Sender is mandatory (guard above). Still contributes.
+        # - Subject is the primary matching signal.
+        # - Date proximity helps disambiguate.
         confidence = (
-            (50 if matches['subject_match'] else 0) +
-            (30 if matches['sender_match'] else 0) +
-            (20 if matches['date_match'] else 0)
+            subject_score +
+            (25 if matches['sender_match'] else 0) +
+            (15 if matches['date_match'] else 0)
         )
         matches['confidence'] = confidence
 

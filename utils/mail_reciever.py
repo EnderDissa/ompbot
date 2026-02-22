@@ -3,9 +3,10 @@ import hashlib
 import imaplib
 import json
 import logging
+import re
 from datetime import datetime, timedelta
 from email.header import decode_header
-from email.utils import parsedate_to_datetime
+from email.utils import parsedate_to_datetime, parseaddr
 from pathlib import Path
 from typing import Optional, List, Dict
 
@@ -27,6 +28,10 @@ class MailReceiver:
 
         self.sent_docs_file = 'data/sent_docs.json'
         self.received_docs_file = 'data/received_docs.json'
+        self._ufb_approve_re = re.compile(
+            r"служебн\w*\s+записк\w*\s+согласован\w*.*внесен\w*.*систем\w*",
+            flags=re.IGNORECASE | re.DOTALL,
+        )
         self._init_storage()
 
     def _decode_mime_header(self, value) -> str:
@@ -146,8 +151,10 @@ class MailReceiver:
 
             body = ""
             if msg.is_multipart():
+                fallback_html = ""
                 for part in msg.walk():
-                    if part.get_content_type() == 'text/plain':
+                    ctype = part.get_content_type()
+                    if ctype == 'text/plain':
                         try:
                             body = part.get_payload(decode=True).decode(
                                 'utf-8', errors='ignore'
@@ -155,6 +162,15 @@ class MailReceiver:
                         except Exception:
                             body = ""
                         break
+                    if ctype == 'text/html' and not fallback_html:
+                        try:
+                            fallback_html = part.get_payload(decode=True).decode(
+                                'utf-8', errors='ignore'
+                            )
+                        except Exception:
+                            fallback_html = ""
+                if not body and fallback_html:
+                    body = fallback_html
             else:
                 try:
                     body = msg.get_payload(decode=True).decode(
@@ -235,38 +251,17 @@ class MailReceiver:
             'confidence': 0
         }
 
-        # --- Critical safety guards ---
-        # 1) Never reconcile on our own outgoing emails.
-        #    This is the root cause of the "Автосогласование" false-positive:
-        #    we send a message, it appears in the mailbox folder, and the bot
-        #    mistakenly treats it as an approval.
-        received_sender = (received_doc.get('sender', '') or '').lower()
-        if self.our_addr.lower() in received_sender:
-            # Self-sent email. Ignore completely.
-            matches['status'] = 'SELF_SENT_IGNORED'
-            matches['confidence'] = 0
+        sender_addr = (parseaddr(received_doc.get('sender', '') or '')[1] or '').lower()
+        if sender_addr != 'pass@itmo.ru':
             return matches
+        matches['sender_match'] = True
 
-        # 2) Approval must come from trusted UFB addresses.
-        #    Without this guard, any email with "СЗ" in subject can be matched.
-        trusted_senders = {
-            'pass@itmo.ru',
-            'dberman@itmo.ru',
-        }
-        # Also allow configured ufb_addr if it differs.
-        if self.ufb_addr:
-            trusted_senders.add(self.ufb_addr.lower())
-
-        if any(addr in received_sender for addr in trusted_senders):
-            matches['sender_match'] = True
-        else:
-            # Sender mismatch => never reconcile.
-            matches['confidence'] = 0
-            matches['status'] = 'NOT_MATCHED'
+        body_raw = received_doc.get('body', '') or ''
+        body_norm = re.sub(r"<[^>]+>", " ", body_raw).replace("\xa0", " ")
+        if not self._ufb_approve_re.search(body_norm):
             return matches
 
         sent_filename_raw = sent_doc.get('filename', '') or ''
-        sent_filename = sent_filename_raw.lower()
         received_subject = (received_doc.get('subject', '') or '').lower()
 
         # --- Subject matching ---
@@ -277,7 +272,7 @@ class MailReceiver:
         try:
             # Sent doc filename is expected like: "/СЗ_<club>_<document_name>.docx"
             # or similar. We reconstruct document_name the same way as in MailHelper.
-            base = sent_filename.split('/')[-1]
+            base = sent_filename_raw.split('/')[-1]
             base = base.rsplit('.', 1)[0]
             parts = base.split('_', 2)
             # parts: ["сз", "<club>", "<document_name>"]
@@ -288,29 +283,10 @@ class MailReceiver:
             unique = str(int(hash_hex, 16) % 1000000).zfill(6)
         except Exception:
             unique = ''
-
-        subj_norm = received_subject.replace(' ', '_')
         subject_score = 0
         if unique and unique in received_subject:
             matches['subject_match'] = True
             subject_score = 60
-        elif sent_filename:
-            base = sent_filename.split('/')[-1]
-            base = base.rsplit('.', 1)[0]
-            parts = base.split('_')
-            club_token = parts[1] if len(parts) >= 2 else ""
-
-            base_norm = base.replace(' ', '_')
-            club_norm = club_token.replace(' ', '_')
-
-            # Strong match: full base name contained in subject
-            if base_norm and base_norm in subj_norm:
-                matches['subject_match'] = True
-                subject_score = 60
-            # Weaker match: club token only (still allowed but requires date match)
-            elif club_norm and club_norm in subj_norm:
-                matches['subject_match'] = True
-                subject_score = 30
 
         try:
             sent_date_str = sent_doc.get('sent_at')

@@ -8,3 +8,4 @@ ignored.txt
 *.yaml
 *.json
 .env
+/.idea/

@@ -177,7 +177,8 @@ def process_message_event(event, vk_helper):
             document_name = document_name[:document_name.rfind(".")]
 
         mail = MailHelper()
-        mail.send_mail(club_name, document_name, [path])
+        manager_vk_id = event.object.get('user_id')
+        mail.send_mail(club_name, document_name, [path], manager_vk_id=int(manager_vk_id) if manager_vk_id is not None else None)
 
         doc_id = f"doc_{sender}_{uuid.uuid4().hex[:8]}"
         save_sent_document(doc_id, title_with_marker, sender, 'ITMO')

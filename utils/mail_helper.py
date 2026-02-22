@@ -11,6 +11,14 @@ from email.mime.application import MIMEApplication
 from utils import get_secrets
 import hashlib
 
+
+DEFAULT_MANAGER = "Калугина Анна Владимировна"
+MANAGER_BY_VK_ID = {
+    297002785: "Берман Денис Константинович",
+    101822925: "Калугина Анна Владимировна",
+    135470651: "Бредихин Егор Сергеевич"
+}
+
 def generate_short_hash(document_name: str) -> str:
     hash_obj = hashlib.md5(document_name.encode())
     hash_hex = hash_obj.hexdigest()
@@ -24,7 +32,7 @@ class MailHelper:
         self.ufb_addr = 'pass@itmo.ru'
         self.mail_password = get_secrets()["mail_password"]
 
-    def send_mail(self, club_name: str, document_name: str, attachments):
+    def send_mail(self, club_name: str, document_name: str, attachments, manager_vk_id=None):
         msg = MIMEMultipart()
 
         marker = document_name[document_name.find("/СЗ_")+4:]
@@ -36,8 +44,7 @@ class MailHelper:
         msg['Subject'] = f"Согласование СЗ: {club_name} {marker} ({unique})"
         msg['From'] = self.our_addr
         msg['To'] = self.ufb_addr
-
-        manager = "Берман Денис Константинович" #todo: добавить парсинг других манагеров
+        manager = MANAGER_BY_VK_ID.get(manager_vk_id, DEFAULT_MANAGER)
 
         body = f"""
         <p>Здравствуйте!</p>

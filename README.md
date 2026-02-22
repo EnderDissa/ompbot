@@ -1,4 +1,6 @@
 # ompbot
+![Static Badge](https://img.shields.io/badge/EnderDissa-ompbot-ompbot)
+![GitHub top language](https://img.shields.io/github/languages/top/EnderDissa/ompbot)
 
 VK-бот для предобработки и согласования служебных записок (СЗ) на проход гостей и внос/вынос оборудования от Офиса Молодёжных Проектов для Управления Физической Безопасности в ИТМО.
 
